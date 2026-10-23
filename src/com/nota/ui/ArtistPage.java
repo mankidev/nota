@@ -43,16 +43,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Everything one artist has to offer: what has been heard already, then what the catalogue holds. */
 public class ArtistPage extends Page implements Playback.Listener {
-
     private static final int LIMIT = 50;
     private static final int BANNER_FADE_MS = 320;
-    /** How much of the life is offered before it is asked for in full. */
     private static final int BIO_LINES = 4;
 
     private final String name;
-    /** A track of theirs that has already been played, so the header has a cover for free. */
     private final Track face;
 
     private TrackAdapter adapter;
@@ -63,9 +59,7 @@ public class ArtistPage extends Page implements Playback.Listener {
     private boolean searched;
     private String channel;
     private boolean lookedUp;
-    /** The picture outranks the colour wash, which a later catalogue answer would else repaint. */
     private boolean bannerUp;
-    /** What the page last painted the window with, kept so coming back to it is not bare. */
     private Drawable wash;
 
     public ArtistPage(String name, Track face) {
@@ -132,7 +126,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         follow.setTextColor(following ? 0xFF000000 : host.getColor(R.color.accent));
     }
 
-    /** What the listener has spent on this artist, which only they can have earned. */
     private void bindListened() {
         TextView line = (TextView) header.findViewById(R.id.listened);
         long minutes = Db.get(host).listenedMs(name, channel) / 60000;
@@ -154,7 +147,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         loadBio();
     }
 
-    /** The reading of a non-latin name, the name behind the alias, whichever exists. */
     private void loadInfo() {
         final TextView note = (TextView) header.findViewById(R.id.note);
         ArtistInfo.lookup(host, name, channel, new ArtistInfo.Callback() {
@@ -166,7 +158,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
     }
 
-    /** The artist's own pages, as MusicBrainz has them filed. */
     private void loadLinks() {
         final View box = header.findViewById(R.id.links_box);
         final LinearLayout row = (LinearLayout) header.findViewById(R.id.links);
@@ -180,13 +171,11 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
     }
 
-    /** Who they are, in the sentences an encyclopedia opens their article with. */
     private void loadBio() {
         final TextView bio = (TextView) header.findViewById(R.id.bio);
         final TextView more = (TextView) header.findViewById(R.id.bio_more);
         View.OnClickListener open = new View.OnClickListener() {
             public void onClick(View v) {
-                // A header is not the place for a whole life, until it is asked for.
                 bio.setMaxLines(Integer.MAX_VALUE);
                 more.setVisibility(View.GONE);
             }
@@ -200,8 +189,6 @@ public class ArtistPage extends Page implements Playback.Listener {
                 bio.setVisibility(View.VISIBLE);
                 bio.post(new Runnable() {
                     public void run() {
-                        // Only a life that does not fit has anything left to open, and what
-                        // does not fit is exactly what the last line had to cut off.
                         Layout laid = bio.getLayout();
                         if (adapter == null || laid == null) return;
                         if (laid.getLineCount() < BIO_LINES
@@ -222,15 +209,12 @@ public class ArtistPage extends Page implements Playback.Listener {
         view.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Intent go = new Intent(Intent.ACTION_VIEW, Uri.parse(link.url));
-                // The page opens wherever the phone opens pages, and on one with nothing
-                // that can, the tap is simply nothing rather than a crash.
                 if (go.resolveActivity(host.getPackageManager()) != null) host.startActivity(go);
             }
         });
         return view;
     }
 
-    /** A site is known by its own mark; anything without one is just a page on the web. */
     private static int icon(String label) {
         if (label.equals("Spotify")) return R.drawable.ic_link_spotify;
         if (label.equals("YouTube")) return R.drawable.ic_link_youtube;
@@ -251,7 +235,6 @@ public class ArtistPage extends Page implements Playback.Listener {
 
     @Override
     public String title() {
-        // The name is already the biggest thing on the page, under the picture it belongs to.
         return "";
     }
 
@@ -282,7 +265,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         menu.show();
     }
 
-    /** The catalogue is asked once per visit; coming back to the page must not cost data again. */
     private void loadArtist() {
         if (searched) return;
         searched = true;
@@ -360,15 +342,7 @@ public class ArtistPage extends Page implements Playback.Listener {
         loadTint(cover);
     }
 
-    /**
-     * The wide picture from the artist's own page on the catalogue, behind the whole header. It
-     * arrives after the colour wash and takes its place, so the screen is never bare while it
-     * travels; a name the catalogue gives no banner for is looked for on Wikidata instead, and
-     * one that is nowhere simply keeps the wash.
-     */
     private void showBanner(String url) {
-        // Under a scrim, half the screen's width is as sharp as it needs to be, and it is the
-        // difference between a 130 KB picture and a 75 KB one.
         final int w = Math.min(host.getResources().getDisplayMetrics().widthPixels, 540);
         final int h = w * host.getResources().getDimensionPixelSize(R.dimen.wash_height)
                 / host.getResources().getDisplayMetrics().widthPixels;
@@ -396,7 +370,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
     }
 
-    /** Same wash as the home screen, so walking into an artist keeps the colour of the music. */
     private void loadTint(final Track cover) {
         if (bannerUp) return;
         if (cover == null) {
@@ -417,17 +390,11 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
     }
 
-    /** Applying it and remembering it are the same act, so neither happens without the other. */
     private void paint(Drawable drawable) {
         wash = drawable;
         host.setTint(drawable);
     }
 
-    /**
-     * The picture takes the colour wash's place by dissolving into it rather than replacing it
-     * between two frames. Only the crossing is the transition: what the page remembers painting
-     * is the picture itself, so coming back to the page arrives at it rather than fading again.
-     */
     private void dissolveTo(Drawable next) {
         Drawable from = wash != null ? wash : new ColorDrawable(0);
         TransitionDrawable crossing = new TransitionDrawable(new Drawable[]{from, next});
@@ -460,7 +427,6 @@ public class ArtistPage extends Page implements Playback.Listener {
     @Override
     public void onDestroy() {
         Playback.get(host).removeListener(this);
-        // A catalogue answer can still be in flight; this says the screen is gone.
         adapter = null;
     }
 }

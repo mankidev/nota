@@ -24,10 +24,7 @@ import com.nota.player.Playback;
 import java.util.ArrayList;
 import java.util.List;
 
-/** On-demand music search over YouTube. */
 public class DiscoverPage extends Page implements Playback.Listener {
-
-    /** Past searches, newest first, each as "term\tcover url" on its own line. */
     private static final String KEY_RECENT = "discover_recent";
     private static final int RECENT_MAX = 12;
 
@@ -40,9 +37,7 @@ public class DiscoverPage extends Page implements Playback.Listener {
     private LinearLayout recentRow;
 
     private String query = "";
-    /** Incremented on every request so a late response from an older query is ignored. */
     private int requestId;
-    /** Whether the search on screen is an unanswered one rather than an empty one. */
     private boolean failed;
 
     @Override
@@ -60,8 +55,6 @@ public class DiscoverPage extends Page implements Playback.Listener {
         list.setAdapter(adapter);
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> p, View view, int pos, long id) {
-                // Only the chosen song is queued: the rest of a search is everything the listener
-                // did not pick, so the recommender continues from here instead.
                 Track picked = adapter.items().get(pos);
                 Signals.get(host).searched(picked);
                 Playback.get(host).playSingle(picked);
@@ -100,15 +93,12 @@ public class DiscoverPage extends Page implements Playback.Listener {
         load();
     }
 
-    /** An empty query has no useful answer here, so it stays a prompt instead of a request. */
     private void load() {
         final int id = ++requestId;
         if (query.length() == 0) {
             deliver(new ArrayList<Track>(), R.string.discover_search_hint, false);
             return;
         }
-        // Said before the request rather than after it fails: offline the answer is known, and
-        // it is a different answer from a catalogue that would not speak.
         if (!Connectivity.isOnline(host)) {
             deliver(new ArrayList<Track>(), R.string.offline_search, true);
             return;
@@ -130,7 +120,6 @@ public class DiscoverPage extends Page implements Playback.Listener {
     private void deliver(List<Track> found, int emptyRes, boolean retry) {
         setLoading(false);
         failed = retry;
-        // A search worth keeping is one that answered; the first hit lends the card its cover.
         if (query.length() > 0 && !found.isEmpty()) {
             remember(query, found.get(0).artUrl);
             buildRecent();
@@ -155,7 +144,6 @@ public class DiscoverPage extends Page implements Playback.Listener {
         }
     }
 
-    /** Same term twice is one entry, moved back to the front. */
     private void remember(String term, String artUrl) {
         if (HistoryPause.on(host)) return;
         List<String[]> kept = new ArrayList<String[]>();
@@ -190,7 +178,6 @@ public class DiscoverPage extends Page implements Playback.Listener {
                     R.layout.row_track, recentRow, false);
             ImageView art = (ImageView) row.findViewById(R.id.art);
             Ui.round(art, radius);
-            // The cover belongs to the search, not to a track anyone can play from here.
             Track stand = new Track();
             stand.type = Track.TYPE_ONLINE;
             stand.artUrl = entry[1].length() == 0 ? null : entry[1];

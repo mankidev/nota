@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class Backup {
-
     public static class Result {
         public int favorites;
         public int plays;

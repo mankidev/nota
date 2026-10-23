@@ -7,14 +7,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.LinearLayout;
 
-/**
- * A screen that can be pushed back down with a finger.
- *
- * <p>The gesture has to be claimed before the buttons and the seek bar see it, which only a
- * parent can do, so the whole screen is this view rather than a listener on one child.
- */
 public class DragSheet extends LinearLayout {
-
     public interface Listener {
         void onDismissed();
     }
@@ -37,12 +30,10 @@ public class DragSheet extends LinearLayout {
         this.listener = listener;
     }
 
-    /** The page below this one; the sheet only gives way once that page is back at its top. */
     public void setScroller(View view) {
         scroller = view;
     }
 
-    /** Turned off while the lyrics list is up, so the drag does not eat its scrolling. */
     public void setDragEnabled(boolean value) {
         enabled = value;
     }

@@ -28,9 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Loads local and remote album art off the UI thread, with a memory cache. */
 public class ArtLoader {
-
     private static ArtLoader instance;
 
     public static synchronized ArtLoader get(Context context) {
@@ -40,7 +38,6 @@ public class ArtLoader {
 
     private static final Uri LEGACY_ALBUM_ART = Uri.parse("content://media/external/audio/albumart");
 
-    /** A cover is a few hundred kilobytes; the whole body is held in memory before decoding. */
     private static final int MAX_ART_BYTES = 4 * 1024 * 1024;
 
     private static final String[] FRAMES = {"maxresdefault.jpg", "hq720.jpg", "sddefault.jpg"};
@@ -66,17 +63,12 @@ public class ArtLoader {
         diskDir.mkdirs();
     }
 
-    /**
-     * Identity of the artwork, ignoring size. Tracks MediaStore could not file under a real
-     * album would otherwise all collide on "a:0" and show the first one's embedded picture.
-     */
     public static String keyFor(Track t) {
         if (t == null) return null;
         if (t.isRemote()) return t.artUrl == null ? null : "u:" + t.artUrl;
         return t.albumId > 0 ? "a:" + t.albumId : "t:" + t.id;
     }
 
-    /** Bitmaps are decoded per surface, so the row thumbnail must not satisfy a 320dp request. */
     private static String cacheKey(String key, int sizePx) {
         if (key == null) return null;
         return key + "@" + (key.startsWith("u:") ? bucket(sizePx) : sizePx);
@@ -91,10 +83,6 @@ public class ArtLoader {
         return k == null ? null : cache.get(k);
     }
 
-    /**
-     * Binds art to an ImageView. The key is stored as the view tag so a recycled row
-     * discards results from its previous, still-running load.
-     */
     public void bind(final ImageView view, final Track track, final int sizePx,
                      final int placeholderRes, final int placeholderPadPx) {
         final String key = cacheKey(keyFor(track), sizePx);
@@ -151,15 +139,10 @@ public class ArtLoader {
         view.setImageResource(res);
     }
 
-    /**
-     * The cover size the full-screen player binds at. Kept here because a cover fetched ahead of
-     * time only spares the player a wait when it was fetched at the size the player asks for.
-     */
     public int playerSize() {
         return Math.round(320 * app.getResources().getDisplayMetrics().density);
     }
 
-    /** Synchronous load for the notification and the full-screen player. */
     public Bitmap load(Track track, int sizePx) {
         String key = cacheKey(keyFor(track), sizePx);
         if (key == null) return null;
@@ -210,11 +193,6 @@ public class ArtLoader {
         return null;
     }
 
-    /**
-     * YouTube hands out cover art at any size: the suffix after '=' is the resize request, so a
-     * list row and the player each fetch the picture at their own scale. The cap matters more
-     * than the buckets do — asking for the player's full 320dp would pull a 348 KB picture.
-     */
     private static String sized(String url, int px) {
         if (url == null || !url.contains("googleusercontent.com")) return url;
         int side = bucket(px);
@@ -222,12 +200,9 @@ public class ArtLoader {
         return (eq > 0 ? url.substring(0, eq) : url) + "=w" + side + "-h" + side + "-l90-rj";
     }
 
-    /** A picture that is not square and belongs to no track: an artist's banner. */
     private static String sizedWide(String url, int w, int h) {
         if (url == null || !url.contains("googleusercontent.com")) return url;
         int eq = url.lastIndexOf('=');
-        // "-p" is the crop that fills the box, so the shape asked for is the shape that arrives
-        // and the view never has to stretch it.
         return (eq > 0 ? url.substring(0, eq) : url) + "=w" + w + "-h" + h + "-p-l90-rj";
     }
 

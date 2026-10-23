@@ -16,9 +16,7 @@ import com.nota.data.ArtLoader;
 import com.nota.model.Track;
 import com.nota.player.Playback;
 
-/** The strip above the tab bar. Stays mounted for the whole session. */
 public class MiniPlayer implements Playback.Listener {
-
     private final MainActivity host;
     private final View root;
     private final ImageView art;
@@ -49,8 +47,6 @@ public class MiniPlayer implements Playback.Listener {
 
         root.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                // The player opens from where this bar sits, so it hands over its position
-                // and the window animation is left out of it entirely.
                 int[] location = new int[2];
                 root.getLocationOnScreen(location);
                 host.startActivity(new Intent(host, NowPlayingActivity.class)

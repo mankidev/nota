@@ -54,7 +54,6 @@ import java.util.Locale;
 import java.util.List;
 
 public class MainActivity extends Activity {
-
     public static final int TAB_HOME = 0;
     public static final int TAB_DISCOVER = 1;
     public static final int TAB_LIBRARY = 2;
@@ -88,14 +87,11 @@ public class MainActivity extends Activity {
     private boolean searching;
     private MiniPlayer mini;
 
-    /** Long enough that a word typed at speed asks the network once rather than per letter. */
     private static final long SEARCH_DEBOUNCE_MS = 300;
     private static final long OFFLINE_FADE_MS = 220;
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private final Runnable searchRunnable = new Runnable() {
         public void run() {
-            // selectTab() stacks the new page before inflating it, and clearing the field
-            // fires the watcher in between; a page with no views yet must not be called.
             Page p = current();
             if (p != null && p.root() != null) p.onSearch(searchField.getText().toString());
         }
@@ -225,7 +221,6 @@ public class MainActivity extends Activity {
         tabViews[index] = v;
         ImageView icon = (ImageView) v.findViewById(R.id.tab_icon);
         icon.setImageResource(iconRes);
-        // The name is gone from the bar but not from the tab: it is what a screen reader says.
         icon.setContentDescription(getString(labelRes));
         v.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
@@ -255,7 +250,6 @@ public class MainActivity extends Activity {
     public void selectTab(int index) {
         while (stack.size() > 1) popNoRefresh();
         if (!stack.isEmpty()) stack.get(0).onHide();
-        // Cleared while the outgoing page is still current, so it is the one that gets reset.
         exitSearch();
         if (tabPages[index] == null) tabPages[index] = createTab(index);
         stack.clear();
@@ -310,22 +304,15 @@ public class MainActivity extends Activity {
         updateTopBar();
     }
 
-    /** The colour wash a page paints behind the top bar and itself; null leaves the plain theme. */
     public void setTint(Drawable wash) {
         setTint(wash, getResources().getDimensionPixelSize(R.dimen.wash_height));
     }
 
-    /**
-     * The header's colour, at its strongest against the very top of the window and letting go
-     * all the way down, so the page is never met by an edge. Colour 0 leaves the plain theme.
-     */
     public void setHeaderTint(int colour) {
         if (colour == 0) {
             setTint(null);
             return;
         }
-        // The status bar inset arrives with the first layout pass; before it does, the usual
-        // height of one stands in so the band is never cut short of the bar it belongs to.
         int inset = findViewById(R.id.column).getPaddingTop();
         if (inset <= 0) inset = Ui.dp(this, 24);
         int head = inset + getResources().getDimensionPixelSize(R.dimen.topbar_height);
@@ -335,7 +322,6 @@ public class MainActivity extends Activity {
                 new int[]{0xB3000000 | rgb, rgb}), head + fade);
     }
 
-    /** How far down the wash reaches is the page's to choose: a picture wants more than a colour. */
     private void setTint(Drawable wash, int heightPx) {
         tint.getLayoutParams().height = heightPx;
         tint.setTranslationY(0);
@@ -343,19 +329,10 @@ public class MainActivity extends Activity {
         tint.setBackground(wash);
     }
 
-    /**
-     * Ties the wash to a page's own scrolling header rather than to the window, so a header
-     * that scrolls away takes its colour with it.
-     */
     public void setTintScroll(int scrollY) {
         tint.setTranslationY(-scrollY);
     }
 
-    /**
-     * Lets the wash run to the very top of the window instead of starting under a bar of flat
-     * colour. Only the column of bars and pages is held below the status bar; the picture behind
-     * it is not, which is what makes it look fixed to the top edge of the screen.
-     */
     private void runUnderStatusBar() {
         getWindow().setStatusBarColor(0);
         getWindow().getDecorView().setSystemUiVisibility(
@@ -390,13 +367,11 @@ public class MainActivity extends Activity {
         if (imm != null) imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT);
     }
 
-    /** Home has no search of its own, so its button hands the job to Discover. */
     public void openDiscoverSearch() {
         selectTab(TAB_DISCOVER);
         enterSearch();
     }
 
-    /** Fills the search bar as if the term had been typed, so the page reloads through onSearch. */
     public void searchFor(String term) {
         if (!searching) enterSearch();
         searchField.setText(term);
@@ -436,10 +411,6 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
-    /**
-     * Faded in and out, and grown from nothing rather than dropped in: the connection going is
-     * not an event on the page, and the page should not jump as though it were.
-     */
     private void bindOffline(boolean online) {
         boolean showing = offlineBar.getVisibility() == View.VISIBLE;
         if (online != showing) return;
@@ -471,10 +442,6 @@ public class MainActivity extends Activity {
         offlineFade.start();
     }
 
-    /**
-     * Every page that exists, not only the one in front: a tab left holding what an outage gave
-     * it would otherwise show it again the next time it is opened.
-     */
     private void tellPages(boolean online) {
         for (int i = 1; i < stack.size(); i++) stack.get(i).onOnline(online);
         for (Page p : tabPages) {
@@ -482,11 +449,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
-     * Settles who the app is with YouTube while the listener is still choosing a song. The
-     * lookup behind the first note cannot begin without this, and asking for it here means the
-     * wait lands on an empty screen instead of on a song that has already been tapped.
-     */
     private void settleSession() {
         final Context app = getApplicationContext();
         if (!Connectivity.isOnline(app)) return;
@@ -503,8 +465,6 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (mini != null) mini.onResume();
-        // A connection can come and go while another app is in front, and the system only
-        // reports it to whoever is listening at the time.
         if (watcher != null) bindOffline(Connectivity.isOnline(this));
     }
 
@@ -523,23 +483,16 @@ public class MainActivity extends Activity {
         if (offlineFade != null) offlineFade.cancel();
         if (watcher != null) watcher.stop();
         if (mini != null) mini.onDestroy();
-        // Pages listen to playback, and playback outlives the activity, so a page never told to
-        // let go keeps this activity and its whole view tree reachable. A theme change or a
-        // rotation then leaves the old copy running behind the new one. Tab roots are held
-        // outside the stack and are missed by pop(), so both lists are walked; stack.get(0) is
-        // always the current tab's root, which is why the stack is walked from one.
         for (int i = 1; i < stack.size(); i++) stack.get(i).onDestroy();
         for (Page p : tabPages) {
             if (p != null) p.onDestroy();
         }
     }
 
-    /** Lets pages refresh the top bar after changing their own title. */
     public void refreshTopBar() {
         updateTopBar();
     }
 
-    /** The playlists screen is pushed rather than a tab now, so it is looked for in the stack. */
     public void refreshPlaylists() {
         for (Page p : stack) {
             if (p instanceof PlaylistsPage) ((PlaylistsPage) p).refresh();
@@ -547,8 +500,6 @@ public class MainActivity extends Activity {
     }
 
     private void showPendingCrash() {
-        // Notes about a refused stream are written to the same file and are still handed over,
-        // but they are not a crash and saying so in a dialog only alarms the listener.
         final String report = CrashLog.exportPending(this);
         if (!CrashLog.fatal(report)) return;
         new AlertDialog.Builder(this, R.style.NotaTheme_Dialog)
@@ -564,8 +515,6 @@ public class MainActivity extends Activity {
                 })
                 .show();
     }
-
-    // ---- backup ----
 
     public void exportBackup() {
         String name = "nota-" + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date())
@@ -658,8 +607,6 @@ public class MainActivity extends Activity {
         if (!isFinishing() && !isDestroyed()) recreate();
     }
 
-    // ---- permissions ----
-
     public static String audioPermission() {
         return Build.VERSION.SDK_INT >= 33
                 ? Manifest.permission.READ_MEDIA_AUDIO
@@ -674,7 +621,6 @@ public class MainActivity extends Activity {
         requestPermissions(new String[]{audioPermission()}, REQ_AUDIO);
     }
 
-    /** Without this the playback notification is dropped and the service cannot go foreground. */
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return;
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)

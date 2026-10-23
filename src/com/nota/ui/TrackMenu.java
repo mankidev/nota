@@ -28,9 +28,7 @@ import com.nota.player.Playback;
 import java.util.Collections;
 import java.util.List;
 
-/** Long-press actions for a track. */
 public class TrackMenu {
-
     public interface OnChanged {
         void changed();
     }
@@ -89,8 +87,6 @@ public class TrackMenu {
                         if (onChanged != null) onChanged.changed();
                         break;
                     case DOWNLOAD:
-                        // The track has to survive the download, or a song kept from a search
-                        // would have nothing to show once the search is gone.
                         db.saveOnline(track);
                         downloads.start(videoId);
                         break;
@@ -123,7 +119,6 @@ public class TrackMenu {
         });
     }
 
-    /** Names the song the actions belong to, the way the row that was pressed did. */
     private static View trackHeader(MainActivity host, Track track) {
         View v = LayoutInflater.from(host).inflate(R.layout.sheet_track_header, null, false);
         ImageView art = (ImageView) v.findViewById(R.id.art);
@@ -136,7 +131,6 @@ public class TrackMenu {
         return v;
     }
 
-    /** Hands the file to another app as a MediaStore item, which needs no FileProvider. */
     private static void share(MainActivity host, Track track) {
         Uri uri = ContentUris.withAppendedId(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.id);
@@ -148,7 +142,6 @@ public class TrackMenu {
         host.startActivity(Intent.createChooser(send, host.getString(R.string.share)));
     }
 
-    /** Lets the user drop tracks into an existing playlist or make a new one. */
     public static void pickPlaylist(final MainActivity host, final List<Track> tracks) {
         final Db db = Db.get(host);
         final List<Db.Playlist> lists = db.playlists();

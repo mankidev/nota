@@ -2,14 +2,12 @@
 <resources>
     <string name="app_name">Nota</string>
 
-    <!-- Sekmeler -->
     <string name="tab_home">Ana sayfa</string>
     <string name="tab_library">Kitaplık</string>
     <string name="tab_playlists">Listeler</string>
     <string name="tab_history">Geçmiş</string>
     <string name="tab_settings">Ayarlar</string>
 
-    <!-- Ana sayfanın üstündeki duygu şeridi -->
     <string name="mood_query">müzik</string>
     <string-array name="mood_names">
         <item>Enerjik</item>
@@ -24,7 +22,6 @@
         <item>Odaklanmış</item>
     </string-array>
 
-    <!-- Kitaplık alt sekmeleri -->
     <string name="lib_downloaded">İndirilenler</string>
     <string name="lib_local">Yerel</string>
     <string name="lib_songs">Şarkılar</string>
@@ -32,11 +29,9 @@
     <string name="lib_artists">Sanatçılar</string>
     <string name="lib_folders">Klasörler</string>
 
-    <!-- İzin -->
     <string name="perm_body">Nota\'nın kitaplığını oluşturabilmesi için bu cihazdaki ses dosyalarını okuma izni gerekiyor.</string>
     <string name="perm_grant">İzin ver</string>
 
-    <!-- Boş durumlar -->
     <string name="empty_songs">Bu cihazda müzik bulunamadı</string>
     <string name="empty_albums">Albüm bulunamadı</string>
     <string name="empty_artists">Sanatçı bulunamadı</string>
@@ -45,7 +40,6 @@
     <string name="empty_search">Aramanla eşleşen bir şey yok</string>
     <string name="rescan">Kitaplığı yeniden tara</string>
 
-    <!-- Sayılar -->
     <string name="n_songs">%1$d şarkı</string>
     <string name="one_song">1 şarkı</string>
     <string name="n_albums">%1$d albüm</string>
@@ -53,7 +47,6 @@
     <string name="unknown_artist">Bilinmeyen sanatçı</string>
     <string name="unknown_album">Bilinmeyen albüm</string>
 
-    <!-- Çalar -->
     <string name="play">Çal</string>
     <string name="pause">Duraklat</string>
     <string name="next">Sonraki</string>
@@ -67,7 +60,6 @@
     <string name="equalizer">Ekolayzer</string>
     <string name="close">Kapat</string>
 
-    <!-- Eylemler -->
     <string name="play_next">Sıradaki olarak çal</string>
     <string name="add_to_queue">Sıraya ekle</string>
     <string name="add_to_playlist">Çalma listesine ekle</string>
@@ -85,10 +77,8 @@
 
     <string name="content_album_art">Albüm kapağı</string>
 
-    <!-- Bildirim -->
     <string name="channel_playback">Çalma</string>
 
-    <!-- Çalma listeleri -->
     <string name="new_playlist">Yeni çalma listesi</string>
     <string name="download">İndir</string>
     <string name="downloading">İndiriliyor…</string>
@@ -113,7 +103,6 @@
     <string name="today">Bugün</string>
     <string name="yesterday">Dün</string>
 
-    <!-- Sıralama -->
     <string name="sort_title">Başlık</string>
     <string name="sort_artist">Sanatçı</string>
     <string name="sort_album">Albüm</string>
@@ -122,7 +111,6 @@
 
     <string name="retry">Tekrar dene</string>
 
-    <!-- Ayarlar -->
     <string name="theme">Tema</string>
     <string name="theme_system">Sistem</string>
     <string name="theme_light">Açık</string>

@@ -8,12 +8,7 @@ import android.media.audiofx.Virtualizer;
 
 import com.nota.data.Prefs;
 
-/**
- * Wraps the platform audio effects. Every effect is optional: several vendors ship devices
- * where one of these constructors throws, and a missing equalizer must not break playback.
- */
 public class Fx {
-
     public static final String KEY_ENABLED = "fx_enabled";
     public static final String KEY_PRESET = "fx_preset";
     public static final String KEY_BANDS = "fx_bands";
@@ -21,7 +16,6 @@ public class Fx {
     public static final String KEY_VIRT = "fx_virt";
     public static final String KEY_LOUD = "fx_loud";
 
-    /** Marks a hand-tuned curve that does not match any built-in preset. */
     public static final int PRESET_CUSTOM = -1;
 
     private static Fx instance;
@@ -51,7 +45,6 @@ public class Fx {
         applyAll();
     }
 
-    /** Rebuilds the effect chain when the MediaPlayer session changes. */
     public void attach(int sessionId) {
         if (sessionId == 0) return;
         if (session == sessionId && eq != null) {
@@ -230,7 +223,6 @@ public class Fx {
         applyVirtualizer();
     }
 
-    /** Extra gain in millibels, for quiet recordings. */
     public int loudnessGain() {
         return Prefs.getInt(app, KEY_LOUD, 0);
     }

@@ -53,23 +53,18 @@ import java.util.List;
 
 public class NowPlayingActivity extends Activity
         implements Playback.Listener {
-
-    /** Where the mini bar sat when it was tapped, so the screen can open out of it. */
     public static final String EXTRA_BAR_TOP = "bar_top";
 
-    /** The controls sit on the blurred cover, so they are tinted for that backdrop, not the theme. */
     private static final int CONTROL_ON = 0xFFFFFFFF;
     private static final int CONTROL_IDLE = 0xB3FFFFFF;
     private static final int REPEAT_IDLE = 0x59FFFFFF;
 
     private static final int HEART_EVERY_MS = 110;
 
-    /** Long enough to read as a change of light rather than a repaint. */
     private static final int TINT_FADE_MS = 320;
 
     private ImageView art;
     private View controls;
-    /** Holds the rising hearts above everything, so no layout has to make room for them. */
     private FrameLayout heartLayer;
     private TextView title, subtitle, position, duration, lyricLine;
     private SeekBar seek;
@@ -92,30 +87,22 @@ public class NowPlayingActivity extends Activity
     private LyricAdapter lyricAdapter;
     private boolean showingLyrics;
     private boolean dragging;
-    /** What the controls are painted with now, and the colour the bar has reached. */
     private Drawable tintNow;
     private int barNow;
     private ValueAnimator barFade;
     private int highlighted = -1;
     private long shownDuration = -1;
     private long shownSecond = -1;
-    /**
-     * The swap fades the old line out before setting the new one, so a line asked for now is
-     * only readable a fraction of a second later. The clock is read that far ahead to make up
-     * for it, which is the difference between a line arriving with the words and just after.
-     */
+
     private static final long LYRIC_LEAD_MS = 160;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
         public void run() {
             updateProgress();
-            // A line that lands late reads as a mistake, so the timer runs tighter while there
-            // are timed words to follow: a quarter-second tick is a quarter-second of drift.
             handler.postDelayed(this, lyrics != null && lyrics.synced ? 80 : 500);
         }
     };
-    /** Keeps releasing hearts for as long as the button is held. */
     private final Runnable rising = new Runnable() {
         public void run() {
             releaseHeart();
@@ -171,8 +158,6 @@ public class NowPlayingActivity extends Activity
             }
         });
         Ui.round(findViewById(R.id.handle), Ui.dp(this, 2));
-        // The player fills the window and the queue starts right under it, so one upward
-        // scroll walks from one to the other instead of opening a second surface.
         scroll.getViewTreeObserver().addOnGlobalLayoutListener(
                 new ViewTreeObserver.OnGlobalLayoutListener() {
                     public void onGlobalLayout() {
@@ -226,7 +211,6 @@ public class NowPlayingActivity extends Activity
             }
         });
 
-
         toggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 playback.toggle();
@@ -250,8 +234,6 @@ public class NowPlayingActivity extends Activity
         });
         favorite.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                // Routed through the service so the button, the notification and the
-                // lock screen all toggle through one path and stay in sync.
                 startService(new Intent(NowPlayingActivity.this, PlayerService.class)
                         .setAction(PlayerService.ACTION_FAVORITE));
             }
@@ -264,8 +246,6 @@ public class NowPlayingActivity extends Activity
                 if (downloads.has(id)) {
                     downloads.remove(id);
                 } else if (!downloads.running(id)) {
-                    // The song has to outlive the search it came from, or what is kept on disk
-                    // would have no title, artist or cover to show once that list is gone.
                     Db.get(NowPlayingActivity.this).saveOnline(playback.current());
                     downloads.start(id);
                 }
@@ -274,8 +254,6 @@ public class NowPlayingActivity extends Activity
         });
         favorite.setOnLongClickListener(new View.OnLongClickListener() {
             public boolean onLongClick(View v) {
-                // The hearts celebrate a song already loved. Held on one that is not, the press
-                // is left alone so letting go still falls through to the tap that loves it.
                 if (!isFavorite()) return false;
                 handler.post(rising);
                 return true;
@@ -327,7 +305,6 @@ public class NowPlayingActivity extends Activity
         bind();
     }
 
-    /** The full-screen layer the hearts are drawn on, above anything that has to make room. */
     private FrameLayout overlay() {
         if (heartLayer == null) {
             heartLayer = new FrameLayout(this);
@@ -337,7 +314,6 @@ public class NowPlayingActivity extends Activity
         return heartLayer;
     }
 
-    /** Sends the screen back down to the bar it came from, then leaves without a flicker. */
     private void close() {
         if (closing) return;
         closing = true;
@@ -424,7 +400,6 @@ public class NowPlayingActivity extends Activity
         updateProgress();
     }
 
-    /** The words come off the disk or the network, so a late answer is dropped if the song moved on. */
     private void loadLyrics(final Track t) {
         lyrics = null;
         highlighted = -1;
@@ -446,11 +421,6 @@ public class NowPlayingActivity extends Activity
         });
     }
 
-    /**
-     * Rows are laid out rather than listed: a ListView inside the page would fight it for drags.
-     * Only what is still to come is shown — the song playing is already the whole screen above,
-     * and the ones behind it are not a queue any more.
-     */
     private void fillQueue() {
         List<Track> q = playback.queue();
         Track cur = playback.current();
@@ -494,7 +464,6 @@ public class NowPlayingActivity extends Activity
         });
     }
 
-    /** One heart, let go from the button and drifting out of sight. */
     private void releaseHeart() {
         int[] from = new int[2];
         int[] layer = new int[2];
@@ -546,7 +515,6 @@ public class NowPlayingActivity extends Activity
         return t != null && Db.get(this).isFavorite(t.key());
     }
 
-    /** The id of the song on screen if it can be kept at all, which a local file already is. */
     private String keepableId() {
         Track t = playback.current();
         return t != null && YtApi.isYouTube(t) ? YtApi.videoId(t) : null;
@@ -559,8 +527,6 @@ public class NowPlayingActivity extends Activity
         Downloads downloads = Downloads.get(this);
         boolean kept = downloads.has(id);
         boolean busy = !kept && downloads.running(id);
-        // The spinner stands in for the button while the song is on its way: the fetch takes
-        // long enough that a tinted icon reads as an unanswered press.
         downloadBusy.setVisibility(busy ? View.VISIBLE : View.GONE);
         download.setVisibility(busy ? View.INVISIBLE : View.VISIBLE);
         download.setImageResource(kept ? R.drawable.ic_downloaded : R.drawable.ic_download);
@@ -603,7 +569,6 @@ public class NowPlayingActivity extends Activity
         }
     }
 
-    /** One line at a time above the title, swapped with a short lift so the change reads as movement. */
     private void showLine(final String text) {
         if (text.equals(lyricLine.getText().toString())) return;
         lyricLine.animate().alpha(0f).translationY(-Ui.dp(this, 4)).setDuration(130)
@@ -633,24 +598,15 @@ public class NowPlayingActivity extends Activity
     }
 
     private void applyLyricsVisibility() {
-        // Nothing to turn the cover over for: the tap is left as it was rather than answered
-        // with a page that only says there are no words.
         if (lyrics == null || lyrics.lines.isEmpty()) showingLyrics = false;
         lyricsList.setVisibility(showingLyrics ? View.VISIBLE : View.GONE);
         sheet.setDragEnabled(!showingLyrics);
         scroll.setLocked(showingLyrics);
         art.setVisibility(showingLyrics ? View.GONE : View.VISIBLE);
-        // The single line says what the list is already saying, so only one of them is ever up.
-        // Its row is held even when empty: a line arriving would otherwise shorten the stage
-        // above it and take the cover up with it, mid-song.
         boolean timed = lyrics != null && lyrics.synced;
         lyricLine.setVisibility(timed && !showingLyrics ? View.VISIBLE : View.INVISIBLE);
     }
 
-    /**
-     * Tints the control row with the cover's own colour, fading out towards the top so the
-     * row melts into the screen instead of sitting in a box.
-     */
     private void loadTint(final Track t) {
         Ui.coverColor(this, t, new Ui.ColorCallback() {
             public void onColor(int colour) {
@@ -659,11 +615,6 @@ public class NowPlayingActivity extends Activity
         });
     }
 
-    /**
-     * The colour belongs to the song, so it changes when the song does — but a screen that
-     * repaints in one frame reads as a glitch, and one that shifts reads as the same screen
-     * holding a different record.
-     */
     private void applyTint(int colour) {
         fadeBar(colour == 0 ? getColor(R.color.accent) : vivid(colour));
         seek.setProgressBackgroundTintList(ColorStateList.valueOf(0x66FFFFFF));
@@ -673,8 +624,6 @@ public class NowPlayingActivity extends Activity
                 ? new ColorDrawable(Color.TRANSPARENT)
                 : new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
                         new int[]{0xD9000000 | rgb, 0x40000000 | rgb, rgb});
-        // Faded from what is on screen rather than from whatever the view was last given: the
-        // handover is what gets wrapped, and wrapping a wrapper stacks them up for good.
         Drawable from = tintNow == null ? new ColorDrawable(Color.TRANSPARENT) : tintNow;
         TransitionDrawable swap = new TransitionDrawable(new Drawable[]{from, next});
         swap.setCrossFadeEnabled(true);
@@ -706,7 +655,6 @@ public class NowPlayingActivity extends Activity
         seek.setThumbTintList(ColorStateList.valueOf(colour));
     }
 
-    /** The seek bar sits on a dark page, so the cover colour is pushed up before it is used. */
     private static int vivid(int colour) {
         float[] hsv = new float[3];
         Color.colorToHSV(colour, hsv);

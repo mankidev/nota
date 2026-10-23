@@ -25,12 +25,6 @@ import java.util.Calendar;
 import java.util.Locale;
 
 public class Ui {
-
-    /**
-     * The context a screen is built on, carrying the theme and the language the listener chose
-     * where the system would otherwise have decided both. Every screen and the notification are
-     * attached to it, so one choice reaches all of them.
-     */
     public static Context chosen(Context base) {
         Configuration c = new Configuration(base.getResources().getConfiguration());
         boolean changed = false;
@@ -46,8 +40,6 @@ public class Ui {
         String language = Prefs.getString(base, SettingsPage.KEY_LANGUAGE, "");
         if (language.length() > 0) {
             Locale picked = new Locale(language);
-            // Set as the default too: a date or a number formatted away from a view has no
-            // context to read the choice from, and would otherwise follow the phone instead.
             Locale.setDefault(picked);
             c.setLocale(picked);
             changed = true;
@@ -75,10 +67,6 @@ public class Ui {
         void onColor(int colour);
     }
 
-    /**
-     * The colour a cover should tint its screen with. A cached bitmap answers at once; anything
-     * else answers zero first and the real colour later, so no screen waits on a decode.
-     */
     public static void coverColor(Context c, final Track track, final ColorCallback cb) {
         final ArtLoader loader = ArtLoader.get(c);
         final int size = dp(c, 320);
@@ -102,7 +90,6 @@ public class Ui {
         }, "nota-tint").start();
     }
 
-    /** Picks the most vivid colour in the cover, which reads better than an average. */
     public static int dominantColor(Bitmap source) {
         Bitmap small = Bitmap.createScaledBitmap(source, 16, 16, true);
         float[] hsv = new float[3];
@@ -152,22 +139,12 @@ public class Ui {
                 ? c.getString(R.string.unknown_album) : album;
     }
 
-    /**
-     * The band across the top of a page, which a background stretches whatever it is given to
-     * fill. A photograph of a person is taller than the band, so it is cut down to its shape
-     * from the top, where a face is, rather than squashed into it.
-     */
     public static Bitmap band(Bitmap bmp, int w, int h) {
         int want = bmp.getWidth() * h / w;
         if (want <= 0 || bmp.getHeight() <= want) return bmp;
         return Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), want);
     }
 
-    /**
-     * What keeps a page readable over a photograph: the page colour, absent where the picture
-     * should be seen and whole where the songs begin. It is the background colour rather than
-     * black so the picture dissolves into the page in either theme.
-     */
     public static Drawable scrim(Context c) {
         int rgb = c.getResources().getColor(R.color.bg) & 0xFFFFFF;
         return new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -178,7 +155,6 @@ public class Ui {
     private static SimpleDateFormat withinYear;
     private static SimpleDateFormat beforeThatYear;
 
-    /** The day a moment fell on, named the way it would be said out loud. */
     public static String day(Context c, long at) {
         Calendar then = Calendar.getInstance();
         then.setTimeInMillis(at);

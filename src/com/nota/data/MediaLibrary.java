@@ -27,9 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** In-memory index of the device's audio files, built from MediaStore. */
 public class MediaLibrary {
-
     public interface Listener {
         void onLibraryChanged();
     }
@@ -53,7 +51,6 @@ public class MediaLibrary {
     private volatile boolean loading;
     private volatile boolean loaded;
 
-    /** Turkish-aware ordering so "Çilek" lands after "Cem", not after "Zil". */
     public static final Collator COLLATOR;
 
     static {
@@ -186,7 +183,6 @@ public class MediaLibrary {
                     if (isUnknown(t.artist)) t.artist = null;
                     if (isUnknown(t.album)) t.album = null;
 
-                    // MediaStore reports disc-prefixed numbers as 1xx / 2xx.
                     if (t.trackNo > 1000) t.trackNo = t.trackNo % 1000;
 
                     if (t.data != null && t.data.contains("/" + Downloads.MUSIC_PATH)) continue;
@@ -198,8 +194,6 @@ public class MediaLibrary {
                 }
             }
         } catch (Exception ignored) {
-            // A denied permission or a vendor MediaStore quirk leaves an empty library
-            // rather than crashing the app.
         } finally {
             if (c != null) c.close();
         }
@@ -294,17 +288,12 @@ public class MediaLibrary {
         this.byKey = keyMap;
     }
 
-    /**
-     * Whether a song can be opened as things stand. Offline that means the phone already holds
-     * it: a download, or a stream whose bytes are still in the cache.
-     */
     public static boolean playable(Context context, Track t, boolean online) {
         if (online || !t.isRemote()) return true;
         String id = YtApi.videoId(t);
         return id != null && StreamProxy.cached(context, id);
     }
 
-    /** The same list without the songs a tap could not open. */
     public static List<Track> playableOnly(Context context, List<Track> tracks) {
         boolean online = Connectivity.isOnline(context);
         if (online) return tracks;
@@ -315,10 +304,6 @@ public class MediaLibrary {
         return out;
     }
 
-    /**
-     * Turns stored track keys back into tracks, dropping entries that no longer exist — and,
-     * offline, the ones that exist only on the other side of the connection.
-     */
     public static List<Track> resolve(Context context, List<String> keys) {
         List<Track> out = new ArrayList<Track>();
         MediaLibrary lib = get();

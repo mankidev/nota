@@ -5,9 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.view.KeyEvent;
 
-/** Handles wired and bluetooth headset buttons. */
 public class MediaButtonReceiver extends BroadcastReceiver {
-
     @Override
     public void onReceive(Context context, Intent intent) {
         if (!Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) return;

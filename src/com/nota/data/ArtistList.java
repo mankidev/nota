@@ -9,7 +9,6 @@ import java.util.Locale;
 import java.util.Set;
 
 public class ArtistList {
-
     public static final ArtistList FOLLOWS = new ArtistList("followed_artists");
     public static final ArtistList MUTED = new ArtistList("muted_artists");
 

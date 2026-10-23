@@ -17,13 +17,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/**
- * Writes uncaught exceptions to a file the user can hand over. Without a debugger attached
- * this is the only way to see a stack trace from a sideloaded build.
- */
 public class CrashLog {
-
-    /** Marks a block that came from a real crash, since notes share the file with them. */
     private static final String FATAL = "FATAL ";
 
     private static final Pattern ADDRESS = Pattern.compile("(https?://[^/\\s]+)[^\\s]*");
@@ -51,10 +45,6 @@ public class CrashLog {
         return new File(context.getFilesDir(), "crash.txt");
     }
 
-    /**
-     * Moves a pending report into the public Downloads folder. Other apps cannot read this
-     * app's private directory, so a sideloaded build has no other way to hand over a trace.
-     */
     public static String exportPending(Context context) {
         File f = file(context);
         if (!f.exists() || f.length() == 0) return null;
@@ -80,10 +70,6 @@ public class CrashLog {
         return body;
     }
 
-    /**
-     * Appends a non-fatal line to the same report. A stream that silently refuses to play
-     * leaves no stack trace, so the reason has to be written down as it happens.
-     */
     public static void note(Context context, String text) {
         try {
             String line = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date())
@@ -99,7 +85,6 @@ public class CrashLog {
         }
     }
 
-    /** Whether a report holds a stack trace at all, rather than only notes kept for diagnosis. */
     public static boolean fatal(String report) {
         return report != null && report.contains(FATAL);
     }

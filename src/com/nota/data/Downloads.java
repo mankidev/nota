@@ -31,19 +31,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Remote songs the listener asked to keep.
- *
- * <p>The stream cache already holds the last handful of songs, but it throws the oldest away to
- * make room and cannot be relied on for a flight or a tunnel. A download is the listener saying
- * this one stays, so it lives in the app's own files instead of the cache and is never pruned.
- * {@link StreamProxy} looks here first, which is what makes a kept song play with no network.
- */
 public class Downloads {
-
-    /** The same ceiling the proxy uses: past this it is not a song, and a bad id could fill disk. */
     private static final long MAX_BYTES = 24L * 1024 * 1024;
-    /** How much is asked for at once, matching the proxy. */
     private static final int CHUNK_BYTES = 1024 * 1024;
 
     public static final String KEY_TO_MUSIC = "downloads_to_music";
@@ -113,7 +102,6 @@ public class Downloads {
         return running.contains(videoId);
     }
 
-    /** The kept songs as track keys, newest first, for the library to list them. */
     public List<String> keptKeys() {
         File[] files = dir.listFiles();
         List<String> out = new ArrayList<String>();
@@ -136,7 +124,6 @@ public class Downloads {
         announce(videoId, false);
     }
 
-    /** Starts a fetch, unless the song is already kept or already on its way. */
     public void start(final String videoId) {
         if (!YtApi.validId(videoId) || has(videoId)) return;
         synchronized (this) {
@@ -160,10 +147,6 @@ public class Downloads {
         });
     }
 
-    /**
-     * Written under a temporary name and renamed only once every promised byte arrived, so a
-     * fetch cut off halfway is never mistaken afterwards for a complete song.
-     */
     private boolean fetch(String videoId) throws Exception {
         String url = YtApi.streamUrl(app, videoId);
         if (url == null) return false;
@@ -298,14 +281,9 @@ public class Downloads {
         return name + ".m4a";
     }
 
-    /**
-     * One stretch of the song. Asked for whole in a single request, YouTube serves a song at
-     * about the speed it plays; asked for in pieces, at whatever the line can carry.
-     */
     private static HttpURLConnection chunk(String url, long from) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(20000);
-        // Generous, because this is read over whatever line the phone happens to be on.
         c.setReadTimeout(120000);
         c.setRequestProperty("Accept-Encoding", "identity");
         c.setRequestProperty("User-Agent", YtStream.USER_AGENT);
@@ -313,7 +291,6 @@ public class Downloads {
         return c;
     }
 
-    /** The length of the whole song, as the answer to a ranged request states it. */
     private static long totalOf(HttpURLConnection c) {
         String contentRange = c.getHeaderField("Content-Range");
         if (contentRange == null) return -1;

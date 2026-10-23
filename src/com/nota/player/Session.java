@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 class Session {
-
     static class Snapshot {
         List<Track> tracks;
         int index;

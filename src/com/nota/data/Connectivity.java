@@ -7,16 +7,13 @@ import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Looper;
 
-/** Whether the catalogue is reachable at all, which decides what the app is allowed to offer. */
 public class Connectivity {
-
     public static boolean isOnline(Context c) {
         ConnectivityManager cm = (ConnectivityManager)
                 c.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return false;
         Network net = cm.getActiveNetwork();
         NetworkCapabilities caps = net == null ? null : cm.getNetworkCapabilities(net);
-        // A captive hotel portal answers every request, so a link alone is not a connection.
         return caps != null
                 && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
@@ -26,13 +23,7 @@ public class Connectivity {
         void onOnline(boolean online);
     }
 
-    /**
-     * Watches the connection come and go. The system answers on a thread of its own and says
-     * which network changed rather than whether there is one left, so every call turns back
-     * into the same question, on the main thread.
-     */
     public static final class Watcher {
-
         private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
         private final Context app;

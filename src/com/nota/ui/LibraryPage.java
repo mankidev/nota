@@ -32,7 +32,6 @@ import java.util.Locale;
 
 public class LibraryPage extends Page
         implements MediaLibrary.Listener, Playback.Listener, Downloads.Listener {
-
     private static final int S_SONGS = 0, S_ALBUMS = 1, S_ARTISTS = 2, S_FOLDERS = 3,
             S_LIKED = 4, S_DOWNLOADED = 5, S_FOLLOWED = 6;
     private static final int TOP_LIKED = 0, TOP_DOWNLOADED = 1, TOP_LOCAL = 2, TOP_FOLLOWED = 3;
@@ -50,7 +49,6 @@ public class LibraryPage extends Page
     private FrameLayout container;
     private View localChips;
     private int section = S_LIKED;
-    /** Which of the local views to return to when the listener comes back to them. */
     private int localSection = S_SONGS;
     private static final Locale TURKISH = new Locale("tr", "TR");
 
@@ -147,8 +145,6 @@ public class LibraryPage extends Page
         if (section == S_FOLLOWED) rebuild();
     }
 
-    // ---- sections ----
-
     private void showSection(int index) {
         if (index == S_FOLLOWED && followed.isEmpty()) followedFor = null;
         section = index;
@@ -230,8 +226,6 @@ public class LibraryPage extends Page
         });
         return v;
     }
-
-    // ---- data ----
 
     private void rebuild() {
         View v = sections[section];
@@ -428,8 +422,6 @@ public class LibraryPage extends Page
         return v == null ? "" : v;
     }
 
-    // ---- callbacks ----
-
     @Override
     public void onSearch(String text) {
         String next = text.toLowerCase(TURKISH).trim();
@@ -456,8 +448,6 @@ public class LibraryPage extends Page
             public boolean onMenuItemClick(MenuItem item) {
                 int id = item.getItemId();
                 if (id == SHUFFLE) {
-                    // Shuffling what is on screen, so the loved and the kept shuffle among
-                    // themselves rather than dragging the whole device in.
                     TrackAdapter adapter = trackAdapters[section];
                     Playback.get(host).shuffleAll(adapter != null && section != S_SONGS
                             ? adapter.items() : MediaLibrary.get().tracks());

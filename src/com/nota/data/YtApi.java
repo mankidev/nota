@@ -19,22 +19,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-/**
- * YouTube as an on-demand catalogue, over the InnerTube endpoints its own apps use.
- *
- * <p>A search hit carries no stream URL: those are signed, expire within hours and are bound to
- * the address that asked for them, so they are resolved right before playback instead.
- */
 public class YtApi {
-
-    /** Marks a Track whose audio is pulled from YouTube rather than read from a local file. */
     public static final String PREFIX = "yt:";
 
-    /**
-     * An id reaches a URL query and a cache file name unescaped, and it arrives from a parsed
-     * answer rather than from the app, so anything but the eleven characters YouTube uses is
-     * treated as a broken parse.
-     */
     static boolean validId(String id) {
         if (id == null || id.length() != 11) return false;
         for (int i = 0; i < id.length(); i++) {
@@ -58,19 +45,12 @@ public class YtApi {
     }
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
-    /** Where a song's release day is kept, so it is asked for once and not once a screen. */
     private static final String AGE_KEY = "yt_out_";
     private static final int TIMEOUT_MS = 20000;
-    /** Results shift slowly; a search from this morning is still a fair answer tonight. */
     private static final long SEARCH_FRESH_MS = 6L * 60 * 60 * 1000;
-    /** A mix is tied to one song rather than to a moment, so it keeps far longer than a search. */
     private static final long MIX_FRESH_MS = 7L * 24 * 60 * 60 * 1000;
-    /** Nobody releases twice in a day, and the shelf is the first thing home draws. */
     private static final long RELEASE_FRESH_MS = 24L * 60 * 60 * 1000;
-    /**
-     * How recent a record has to be to count as new. An artist always has a newest record, and
-     * without this the shelf would announce a song from last spring as though it had just landed.
-     */
+
     private static final long FRESH_WINDOW_MS = 90L * 24 * 60 * 60 * 1000;
     private static final String SEARCH_URL =
             "https://music.youtube.com/youtubei/v1/search?prettyPrint=false";
@@ -78,30 +58,15 @@ public class YtApi {
             "https://music.youtube.com/youtubei/v1/next?prettyPrint=false";
     private static final String WATCH_NEXT_URL =
             "https://www.youtube.com/youtubei/v1/next?prettyPrint=false";
-    /** Restricts search to songs, so albums, artists and playlist rows stay out of the list. */
     private static final String SONGS_ONLY = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D";
-    /**
-     * The same search restricted to records rather than songs: albums, EPs and singles. Songs
-     * carry no release date anywhere in the answer, and these rows carry the year, which is the
-     * only way to tell what an artist put out this season from what they are known for.
-     */
+
     private static final String VIDEOS_ONLY = "EgWKAQIQAWoKEAkQBRAKEAMQBA%3D%3D";
     private static final String RELEASES_ONLY = "EgWKAQIYAWoKEAkQBRAKEAMQBA%3D%3D";
-    /**
-     * YouTube Music's own web client. It answers with square cover art and with title, artist,
-     * album and length as separate fields, where the plain YouTube clients only offer a frame
-     * grabbed from the video and a title like "TARKAN - Kuzu Kuzu (Official Music Video)".
-     *
-     * <p>The full browser user agent is load-bearing: with a short one the server skips gzip and
-     * the same answer arrives as 480 KB instead of 12 KB.
-     */
+
     private static final Client YT_MUSIC = new Client("WEB_REMIX", "1.20240403.01.00",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     + "Chrome/123.0 Safari/537.36", "tr", "TR");
-    /**
-     * Plain YouTube, asked in English because the only thing wanted of it is a release date and
-     * it states one as a phrase — "3 weeks ago" — that has to be read back.
-     */
+
     private static final Client YT_WATCH = new Client("WEB", "2.20240403.01.00",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     + "Chrome/123.0 Safari/537.36", "en", "US");
@@ -127,8 +92,6 @@ public class YtApi {
             return new JSONObject().put("client", c);
         }
     }
-
-    // ---- search ----
 
     public static void search(Context c, final String term, final TrackCallback cb) {
         final Context app = c.getApplicationContext();
@@ -167,7 +130,6 @@ public class YtApi {
         return SearchRank.merge(term, songs, videos);
     }
 
-    /** Blocking: call it from a worker thread. Null means the search could not be answered. */
     public static List<Track> searchBlocking(Context app, String term) {
         return searchFiltered(app, term, SONGS_ONLY, "m:", false);
     }
@@ -218,7 +180,6 @@ public class YtApi {
         t.type = Track.TYPE_ONLINE;
         t.sourceId = PREFIX + id;
         t.title = title;
-        // The second column packs artist, album and length into one bulleted line.
         String[] meta = bullets(column(row, 1));
         if (meta.length > 0) t.artist = meta[0];
         t.artistChannel = channel(columnText(row, 1));
@@ -228,13 +189,6 @@ public class YtApi {
         return t;
     }
 
-    // ---- new releases ----
-
-    /**
-     * The newest song of each of the given artists, in the order asked, leaving out the ones
-     * whose newest is not recent. An artist the catalogue cannot answer for is left out too
-     * rather than failing the row: one silent name should not cost the others their line.
-     */
     public static void latestReleases(Context c, final List<String> artists,
                                       final TrackCallback cb) {
         final Context app = c.getApplicationContext();
@@ -254,15 +208,6 @@ public class YtApi {
         }, "nota-yt-release").start();
     }
 
-    /**
-     * Songs from the newest record an artist has out, and only while that record is still news.
-     * Two questions rather than one: the record list is where the year lives, and the song list
-     * is where the playable ids live, so the newest title found in the first is looked up again
-     * in the second.
-     *
-     * <p>Blocking. Null means the catalogue could not be reached; empty means it had nothing
-     * recent under that exact name.
-     */
     private static List<Track> latestReleaseBlocking(Context app, String artist) {
         if (TextUtils.isEmpty(artist)) return null;
         String body;
@@ -291,8 +236,6 @@ public class YtApi {
         for (JSONObject row : rows) {
             String title = column(row, 0);
             if (TextUtils.isEmpty(title)) continue;
-            // "Single • OZ Tarkan • 2026" is a different artist with the asked-for name inside
-            // theirs, and it is always the newest thing in the list. Only an exact name counts.
             String[] meta = bullets(column(row, 1));
             if (!names(meta, artist)) continue;
             int year = year(meta);
@@ -302,10 +245,6 @@ public class YtApi {
             }
         }
         if (newest == null) return new ArrayList<Track>();
-        // A record list is sorted by nothing but what the artist has, so its newest entry can be
-        // years old. The year alone cannot separate this month's single from last January's, and
-        // that is the difference the shelf is about, so the year only rules out what is plainly
-        // too old to be worth a second question.
         if (newestYear < thisYear() - 1) return new ArrayList<Track>();
 
         List<Track> songs = searchBlocking(app, artist + " " + newest);
@@ -481,14 +420,6 @@ public class YtApi {
         return Calendar.getInstance().get(Calendar.YEAR);
     }
 
-    /**
-     * How long ago the video went up, or -1 when YouTube would not say. The song rows carry no
-     * date at all, and the record rows carry only a year, so the date is asked of the watch page
-     * the way a browser would see it.
-     *
-     * <p>Kept once found, and kept for good: the shelf is rebuilt whenever anything is played or
-     * favourited, and the day a song came out is the one thing about it that never changes.
-     */
     private static long ageMs(Context app, String videoId) {
         if (!validId(videoId)) return -1;
         long known = Prefs.getLong(app, AGE_KEY + videoId, 0);
@@ -516,7 +447,6 @@ public class YtApi {
         return age;
     }
 
-    /** "3 weeks ago" as milliseconds. The client asks in English so this has one wording to read. */
     private static long spoken(String said) {
         if (TextUtils.isEmpty(said)) return -1;
         String[] words = said.trim().split(" ");
@@ -546,7 +476,6 @@ public class YtApi {
         return false;
     }
 
-    /** The year sits last on the line, where a length would sit on a song row. */
     private static int year(String[] meta) {
         if (meta.length == 0) return 0;
         String last = meta[meta.length - 1];
@@ -558,9 +487,6 @@ public class YtApi {
         }
     }
 
-    // ---- moods ----
-
-    /** Enough rows to fill the screen a mood takes over, from either side of the merge. */
     private static final int MOOD_MAX = 40;
 
     public static void mood(Context c, final String mood, final String phrase,
@@ -579,17 +505,6 @@ public class YtApi {
         }, "nota-yt-mood").start();
     }
 
-    /**
-     * A mood as this listener would hear it: the catalogue is asked for the mood beside the names
-     * they play most, and the answers are dealt out in turn so no one name takes the shelf. The
-     * mood on its own is not asked at all — that answer is the same chart for everybody, and a
-     * shelf of strangers is not what a mood on this screen is for.
-     *
-     * <p>The bare phrase is the one thing left for a listener who has played nothing yet, since
-     * there is no listening to narrow a mood down to.
-     *
-     * <p>Blocking. Null means nothing could be reached.
-     */
     public static List<Track> moodBlocking(Context app, String mood, String phrase,
                                            List<String> artists) {
         List<Cursor> mine = new ArrayList<Cursor>();
@@ -604,15 +519,12 @@ public class YtApi {
         Set<String> seen = new HashSet<String>();
         while (out.size() < MOOD_MAX) {
             boolean grew = false;
-            // One song from each answer per round, so the shelf reads as a mix of the names they
-            // play rather than as one of them followed by another.
             for (Cursor c : mine) grew |= c.moveOne(out, seen);
             if (!grew) break;
         }
         return out;
     }
 
-    /** One answer being merged with the others, and how far through it the merge has got. */
     private static final class Cursor {
         private final List<Track> list;
         private int at;
@@ -633,13 +545,9 @@ public class YtApi {
         }
     }
 
-    // ---- artist banner ----
-
-    /** The same search restricted to artists, so the answer is a channel rather than a song. */
     private static final String ARTISTS_ONLY = "EgWKAQIgAWoKEAkQBRAKEAMQBA%3D%3D";
     private static final String BROWSE_URL =
             "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false";
-    /** A banner outlives a record: an artist changes theirs about as often as they change label. */
     private static final long BANNER_FRESH_MS = 30L * 24 * 60 * 60 * 1000;
 
     public static class Artist {
@@ -786,8 +694,6 @@ public class YtApi {
             return null;
         }
         for (JSONObject row : rows) {
-            // Searching "Tarkan" also answers with the tribute channels; wearing the name
-            // exactly is the whole test, as it is for a new release.
             if (!artist.equalsIgnoreCase(column(row, 0))) continue;
             String id = browseId(row);
             if (id != null) return id;
@@ -801,8 +707,6 @@ public class YtApi {
         String id = browse == null ? null : browse.optString("browseId", "");
         return validChannel(id) ? id : null;
     }
-
-    // ---- mix ----
 
     public static void mix(Context c, final String videoId, final TrackCallback cb) {
         final Context app = c.getApplicationContext();
@@ -843,13 +747,6 @@ public class YtApi {
         return rows;
     }
 
-    /**
-     * The radio YouTube Music builds around one song. It is the only outside opinion the app can
-     * ask for, so it carries the cold start: a song nobody has played next to anything yet still
-     * has fifty neighbours here.
-     *
-     * <p>Blocking. The seed itself comes back as the first entry and is dropped.
-     */
     public static List<Track> mixBlocking(Context app, String videoId) {
         List<JSONObject> rows = mixRows(app, videoId);
         if (rows == null) return null;
@@ -863,7 +760,6 @@ public class YtApi {
             t.type = Track.TYPE_ONLINE;
             t.sourceId = PREFIX + id;
             t.title = title;
-            // shortBylineText is the artist alone; the long one appends view and like counts.
             t.artist = text(row.optJSONObject("shortBylineText"));
             t.artistChannel = channel(row.optJSONObject("longBylineText"));
             t.durationMs = parseLength(text(row.optJSONObject("lengthText")));
@@ -903,7 +799,6 @@ public class YtApi {
         return parts;
     }
 
-    /** Renderer layouts differ per client, so hits are picked out of the tree by name. */
     private static void collect(Object node, String key, List<JSONObject> out) {
         if (node instanceof JSONObject) {
             JSONObject o = (JSONObject) node;
@@ -933,7 +828,6 @@ public class YtApi {
         return sb.toString();
     }
 
-    /** Thumbnails run small to large; the last one carries the suffix ArtLoader rescales. */
     private static String thumbnail(JSONObject row) {
         JSONObject box = row.optJSONObject("thumbnail");
         JSONObject inner = box == null ? null : box.optJSONObject("musicThumbnailRenderer");
@@ -944,7 +838,6 @@ public class YtApi {
         return best == null ? null : best.optString("url", null);
     }
 
-    /** "4:02" or "1:02:30" to milliseconds. */
     private static long parseLength(String s) {
         if (TextUtils.isEmpty(s)) return 0;
         long total = 0;
@@ -968,19 +861,10 @@ public class YtApi {
         return validId(id) ? id : null;
     }
 
-    // ---- streams ----
-
-    /**
-     * The address of the song's audio, asked of YouTube directly.
-     *
-     * <p>Blocking: call it from a worker thread. The answer is remembered until it expires, so
-     * the cost is paid once per song rather than once per range the player asks for.
-     */
     public static String streamUrl(Context app, String videoId) {
         return YtStream.url(app, videoId);
     }
 
-    /** Settles who the app is with YouTube before a song needs the answer. Blocking. */
     public static void warmSession(Context app) {
         YtStream.warmSession(app);
     }

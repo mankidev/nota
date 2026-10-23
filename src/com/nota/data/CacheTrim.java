@@ -6,9 +6,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
 
-/** Keeps the kept answers from growing into the phone's storage. */
 public class CacheTrim {
-
     private static final long ART_BUDGET = 48L * 1024 * 1024;
     private static final long JSON_BUDGET = 2L * 1024 * 1024;
 

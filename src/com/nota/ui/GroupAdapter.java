@@ -15,9 +15,7 @@ import com.nota.model.Track;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Rows that stand for a collection (artist, folder, playlist) rather than a single track. */
 public class GroupAdapter extends BaseAdapter {
-
     public static class Group {
         public String title;
         public String subtitle;

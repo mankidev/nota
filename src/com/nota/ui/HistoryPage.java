@@ -20,13 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Everything played, newest first. A tab rather than a row inside the playlists screen: reaching
- * for the song from an hour ago is the commonest thing asked of this app, and it was two taps
- * and a list of names away. The playlists themselves are one tap deeper, in the overflow.
- */
 public class HistoryPage extends Page implements Playback.Listener, MediaLibrary.Listener {
-
     private static final int MAX = 200;
 
     private TrackAdapter adapter;
@@ -113,7 +107,6 @@ public class HistoryPage extends Page implements Playback.Listener, MediaLibrary
         emptyBox.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    /** The day a song was last played, said only once per day it opens. */
     private List<String> days(List<Track> items, Map<String, Long> played) {
         List<String> out = new ArrayList<String>();
         String last = null;
@@ -157,7 +150,6 @@ public class HistoryPage extends Page implements Playback.Listener, MediaLibrary
     public void onTrackChanged(Track track) {
         if (adapter == null) return;
         adapter.setActiveKey(track == null ? null : track.key());
-        // A song starting is exactly what puts a new name at the top of this list.
         reloadWhenSeen();
     }
 

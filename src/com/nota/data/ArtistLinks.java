@@ -14,20 +14,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * Where else an artist can be read about: their own site, their channel, the places they post.
- * MusicBrainz keeps these as relations on the artist, so one request buys the whole row.
- *
- * <p>Only the kinds a listener would recognise are kept, named after the site rather than the
- * relation, and the answer is written down for good: a homepage is not news that turns stale.
- */
 public class ArtistLinks {
-
     private static final String KEY = "artist_links:";
     private static final int MAX = 6;
     private static final char FIELD = '\u0001';
 
-    /** The relation kinds worth a chip, in the order they should be offered. */
     private static final String[] KINDS = {
             "official homepage", "youtube", "social network", "wikipedia",
             "free streaming", "streaming"};
@@ -63,7 +54,6 @@ public class ArtistLinks {
                 try {
                     stored = store(fetch(artist, channel));
                 } catch (Exception e) {
-                    // An answer that never arrived is not "no links", so nothing is written down.
                     return;
                 }
                 Prefs.setString(app, key, stored);
@@ -101,7 +91,6 @@ public class ArtistLinks {
         return out;
     }
 
-    /** The site behind a link, said the way its own users say it. */
     private static String label(String url) {
         String host = Uri.parse(url).getHost();
         if (host == null) return null;

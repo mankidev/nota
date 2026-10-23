@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class LessAi {
-
     public static final String KEY = "less_ai";
 
     private static final Pattern MARK = Pattern.compile(

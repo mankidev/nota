@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- What the shelf will look like once the answer arrives: the same heading and the same rows,
-     drawn empty. It holds the page at the height it is about to have, so nothing jumps when the
-     songs land. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"

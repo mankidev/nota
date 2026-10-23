@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AlbumAdapter extends BaseAdapter {
-
     private final Context ctx;
     private final ArtLoader art;
     private final int artPx;

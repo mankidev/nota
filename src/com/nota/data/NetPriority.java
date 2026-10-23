@@ -1,7 +1,6 @@
 package com.nota.data;
 
 public class NetPriority {
-
     private static final long MAX_HOLD_MS = 15000;
 
     private static volatile long audioUntil;

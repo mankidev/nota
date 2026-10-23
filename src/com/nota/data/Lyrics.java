@@ -21,12 +21,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Timed lines for a track: a .lrc or .txt file sitting next to the audio file, and otherwise
- * LRCLIB, which is open, needs no key and answers in the same LRC format.
- */
 public class Lyrics {
-
     public interface Callback {
         void onLyrics(Lyrics lyrics);
     }
@@ -41,7 +36,6 @@ public class Lyrics {
         }
     }
 
-    /** Empty when nothing was found; synced is false for plain text. */
     public final List<Line> lines;
     public final boolean synced;
     private Lyrics(List<Line> lines, boolean synced) {
@@ -51,31 +45,19 @@ public class Lyrics {
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
-    /** The words of a song do not change; only a miss is worth asking about again. */
     private static final long FRESH_MS = 30L * 24 * 60 * 60 * 1000;
-    /**
-     * How far a catalogue entry may sit from the track's own length and still be the same cut.
-     * Wide enough for a fade-out counted differently, narrow enough to keep a live take or an
-     * extended mix out: those carry real timings that simply belong to another recording.
-     */
+
     private static final long LENGTH_SLACK_MS = 3000;
-    /**
-     * A song runs to a couple of hundred lines. The cap is here because the whole list is walked
-     * on every tick to find the current line, so a malformed answer must not be able to turn that
-     * into a scan of a million entries.
-     */
+
     private static final int MAX_LINES = 2000;
 
     private static final Pattern STAMP =
             Pattern.compile("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?\\]");
-    /** An LRC header such as [ar:...] or [offset:+200]: about the file, not sung in the song. */
     private static final Pattern LRC_TAG = Pattern.compile("^\\[[a-zA-Z#]+:.*\\]$");
-    /** "(Official Music Video)", "[HD]" and the like, which the lyrics catalogue never carries. */
     private static final Pattern BRACKETED = Pattern.compile("[(\\[][^()\\[\\]]*[)\\]]");
     private static final Pattern FEATURING =
             Pattern.compile("(?i)\\s+(feat\\.?|ft\\.?|featuring)\\s.*$");
 
-    /** Answers on the main thread; the lookup itself runs on a worker. */
     public static void load(Context c, final Track t, final Callback cb) {
         final Context app = c.getApplicationContext();
         new Thread(new Runnable() {
@@ -90,7 +72,6 @@ public class Lyrics {
         }, "nota-lyrics").start();
     }
 
-    /** Blocking: call it from a worker thread. */
     public static Lyrics loadBlocking(Context app, Track t) {
         if (t == null) return empty();
         Lyrics local = sidecar(t);
@@ -107,11 +88,6 @@ public class Lyrics {
         return read(new File(base + ".txt"));
     }
 
-    /**
-     * Asks LRCLIB by exact length first: that answer is a tenth of the size and can only be the
-     * right cut. The search is fuzzy about naming but carries whole records for every candidate,
-     * so it is only worth its weight when the cheap answer came back without timings.
-     */
     private static Lyrics fetch(Context app, Track t) {
         String artist = strip(t.artist);
         String title = songName(artist, strip(t.title));
@@ -126,7 +102,6 @@ public class Lyrics {
         }
         Lyrics searched = ask(app, t.durationMs,
                 url("search", "artist_name", artist, "track_name", title));
-        // Words without timings still beat nothing, so the cheap answer is kept as a floor.
         return searched.lines.isEmpty() ? exact : searched;
     }
 
@@ -140,7 +115,6 @@ public class Lyrics {
         }
     }
 
-    /** File tags and video titles like to repeat the artist in front of the song. */
     private static String songName(String artist, String title) {
         String prefix = artist + " - ";
         if (artist.length() > 0 && title.length() > prefix.length()
@@ -150,7 +124,6 @@ public class Lyrics {
         return title;
     }
 
-    /** The search answers with a list, the exact lookup with a single record. */
     private static Lyrics pick(String body, long durationMs) throws Exception {
         body = body.trim();
         if (!body.startsWith("[")) return fromRecord(new JSONObject(body));
@@ -264,7 +237,6 @@ public class Lyrics {
         return new Lyrics(out, synced);
     }
 
-    /** Index of the line that should be highlighted, or -1 before the first stamp. */
     public int indexAt(long positionMs, int near) {
         if (!synced) return -1;
         int i = Math.min(near, lines.size() - 1);

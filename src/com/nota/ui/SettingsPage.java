@@ -26,14 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettingsPage extends Page {
-
     public static final String KEY_THEME = "theme";
     public static final int THEME_SYSTEM = 0, THEME_LIGHT = 1, THEME_DARK = 2;
 
-    /** A language tag, or empty for whatever the phone itself is set to. */
     public static final String KEY_LANGUAGE = "language";
     private static final String[] LANGUAGES = {"", "tr", "en"};
-    /** Each language named in itself, the way a speaker of it would look for it in a list. */
     private static final String[] LANGUAGE_NAMES = {null, "Türkçe", "English"};
 
     private static final int ROW_THEME = 0, ROW_LANGUAGE = 1, ROW_SLEEP = 2, ROW_EQ = 3,
@@ -197,7 +194,6 @@ public class SettingsPage extends Page {
                 .show();
     }
 
-    /** The only window onto what the recommender has learned, until it starts suggesting. */
     private void showTaste() {
         Db db = Db.get(host);
         StringBuilder body = new StringBuilder(host.getString(R.string.taste_counts,
@@ -244,8 +240,6 @@ public class SettingsPage extends Page {
                                 d.dismiss();
                                 if (which == chosenLanguage()) return;
                                 Prefs.setString(host, KEY_LANGUAGE, LANGUAGES[which]);
-                                // The whole app is already drawn in the old language, and only
-                                // being built again picks up the new one.
                                 host.recreate();
                             }
                         })

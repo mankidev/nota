@@ -7,14 +7,7 @@ import java.io.FileOutputStream;
 import java.io.RandomAccessFile;
 import java.security.MessageDigest;
 
-/** Disk-backed JSON responses, so a repeated screen costs nothing on the wire. */
 public class DiskCache {
-
-    /**
-     * Returns the stored body when it is still fresh, otherwise tries each URL in order and
-     * keeps the first success. A stale copy is served when every URL fails, because an old
-     * list beats an error screen.
-     */
     public static String load(Context app, String bucket, String key, long freshMs,
                               String... urls) {
         File f = file(app, bucket, key);
@@ -46,7 +39,6 @@ public class DiskCache {
         return body;
     }
 
-    /** Same contract as {@link #load}, for endpoints that only answer a JSON POST. */
     public static String loadPost(Context app, String bucket, String key, long freshMs,
                                   String url, String json, String userAgent) {
         File f = file(app, bucket, key);
@@ -70,10 +62,6 @@ public class DiskCache {
         return new File(dir, digest(key) + ".json");
     }
 
-    /**
-     * A name has to stand for the whole key: with a 32-bit hash two different queries collide
-     * often enough to be served each other's answer.
-     */
     static String digest(String key) {
         byte[] sum;
         try {

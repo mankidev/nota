@@ -7,14 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
 
-/**
- * A horizontal scroller that comes to rest on whole pages.
- *
- * <p>Its children are stretched to the width of the scroller, so a drag either turns the page or
- * gives it back; left to itself the strip would settle halfway and show two half pages at once.
- */
 public class PagerScroll extends HorizontalScrollView {
-
     private boolean flung;
 
     public PagerScroll(Context context, AttributeSet attrs) {

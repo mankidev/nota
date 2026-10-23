@@ -13,7 +13,6 @@ import java.util.Locale;
 import java.util.Set;
 
 public class SearchRank {
-
     private static final String[] VARIANTS = {
             "remix", "cover", "extended", "loop", "hour", "hours", "sped", "slowed", "nightcore",
             "reverb", "8d", "karaoke", "mashup", "edit", "bootleg", "phonk", "x", "speed",

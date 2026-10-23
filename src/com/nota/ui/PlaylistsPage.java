@@ -16,9 +16,7 @@ import com.nota.model.Track;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Smart lists (favorites, history) followed by the user's own playlists. */
 public class PlaylistsPage extends Page {
-
     private static final int FIRST_TRACK_STEP = 8;
 
     private GroupAdapter adapter;

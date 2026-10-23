@@ -25,15 +25,12 @@ import com.nota.model.Track;
 import com.nota.ui.MainActivity;
 import com.nota.ui.Ui;
 
-/** Keeps playback alive in the background and mirrors it into a MediaStyle notification. */
 public class PlayerService extends Service implements Playback.Listener {
-
     public static final String ACTION_TOGGLE = "com.nota.action.TOGGLE";
     public static final String ACTION_NEXT = "com.nota.action.NEXT";
     public static final String ACTION_PREV = "com.nota.action.PREV";
     public static final String ACTION_STOP = "com.nota.action.STOP";
     public static final String ACTION_FAVORITE = "com.nota.action.FAVORITE";
-    /** Broadcast so any visible screen can re-tick its heart after the notification toggles it. */
     public static final String ACTION_FAVORITE_CHANGED = "com.nota.action.FAVORITE_CHANGED";
 
     private static final String CHANNEL = "playback";
@@ -72,8 +69,6 @@ public class PlayerService extends Service implements Playback.Listener {
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i);
             else c.startService(i);
         } catch (Exception e) {
-            // From Android 12 a foreground service may not be started while the app sits in the
-            // background, which is exactly where auto-advance after a failed track lands.
             CrashLog.note(c, "player service start refused: " + e);
         }
     }
@@ -82,7 +77,6 @@ public class PlayerService extends Service implements Playback.Listener {
         c.stopService(new Intent(c, PlayerService.class));
     }
 
-    /** The notification is the app on the lock screen, so it is worded in the chosen language. */
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(Ui.chosen(base));
@@ -184,7 +178,6 @@ public class PlayerService extends Service implements Playback.Listener {
         main.removeCallbacks(leaveForeground);
         startForeground(NOTIF_ID, buildNotification(null));
         foreground = true;
-        // Nothing survives a process restart: Playback would come back with an empty queue.
         return START_NOT_STICKY;
     }
 
@@ -206,8 +199,6 @@ public class PlayerService extends Service implements Playback.Listener {
         stopForeground(true);
         super.onDestroy();
     }
-
-    // ---- Playback.Listener ----
 
     public void onTrackChanged(Track track) {
         updateSessionMetadata(track);
@@ -263,7 +254,6 @@ public class PlayerService extends Service implements Playback.Listener {
                 .build());
     }
 
-    /** Album art arrives late; refresh the notification once it is decoded. */
     private void loadArtAsync(final Track t) {
         final String key = ArtLoader.keyFor(t);
         if (key == null || key.equals(artKeyInNotification)) return;

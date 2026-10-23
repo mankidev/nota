@@ -24,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Collage {
-
     private static final int TILES = 4;
 
     private static final ExecutorService worker = Executors.newSingleThreadExecutor();

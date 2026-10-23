@@ -47,11 +47,6 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
-        <!--
-          Not exported: the session hands the system an explicit PendingIntent for this
-          component, which is delivered as the app itself. Exporting it would let any other
-          app drive playback with a forged MEDIA_BUTTON.
-        -->
         <receiver
             android:name=".player.MediaButtonReceiver"
             android:exported="false">

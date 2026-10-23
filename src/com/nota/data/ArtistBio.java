@@ -9,17 +9,7 @@ import org.json.JSONObject;
 import java.net.URLEncoder;
 import java.util.Locale;
 
-/**
- * Who the artist is, in the few sentences an encyclopedia opens with. MusicBrainz itself keeps
- * only a one-line disambiguation, but it points at the Wikidata entry, which names the article
- * written about them in every language it exists in — and Wikipedia hands out that opening on
- * its own.
- *
- * <p>The reader's own language is asked for first, English after it, and the answer is kept for
- * good: a life already lived does not read differently tomorrow.
- */
 public class ArtistBio {
-
     private static final String KEY = "artist_bio:";
     private static final int TIMEOUT_MS = 8000;
 
@@ -44,7 +34,6 @@ public class ArtistBio {
                 try {
                     text = fetch(artist, channel, lang);
                 } catch (Exception e) {
-                    // An answer that never arrived is not "no life", so nothing is written down.
                     return;
                 }
                 Prefs.setString(app, key, text);
@@ -82,7 +71,6 @@ public class ArtistBio {
         return item == null ? null : item.optJSONObject("sitelinks");
     }
 
-    /** What the article opens with: a paragraph at most, and the plain text of it. */
     private static String summary(String lang, JSONObject sitelink) throws Exception {
         String title = sitelink == null ? "" : sitelink.optString("title", "");
         if (title.length() == 0) return "";
@@ -91,10 +79,8 @@ public class ArtistBio {
         return new JSONObject(json).optString("extract", "");
     }
 
-    /** The reader's language, where it is one a wiki could be named after. */
     private static String language() {
         String lang = Locale.getDefault().getLanguage();
-        // It is going straight into a hostname, and the platform allows odd tags in a locale.
         return lang != null && lang.matches("[a-z]{2,3}") ? lang : "en";
     }
 }

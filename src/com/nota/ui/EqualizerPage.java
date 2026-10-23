@@ -16,7 +16,6 @@ import com.nota.player.Fx;
 import com.nota.player.Playback;
 
 public class EqualizerPage extends Page {
-
     private Fx fx;
     private LinearLayout bandBox, extrasBox;
     private TextView presetChip, note;

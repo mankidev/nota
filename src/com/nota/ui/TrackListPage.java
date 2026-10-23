@@ -25,9 +25,7 @@ import com.nota.player.Playback;
 import java.util.ArrayList;
 import java.util.List;
 
-/** One collection of tracks: an album, an artist, a folder, a playlist or a smart list. */
 public class TrackListPage extends Page implements Playback.Listener, MediaLibrary.Listener {
-
     private static final int KIND_ALBUM = 0, KIND_ARTIST = 1, KIND_FOLDER = 2,
             KIND_PLAYLIST = 3, KIND_FAVORITES = 4, KIND_RECENT = 5, KIND_MOST = 6,
             KIND_MIX = 7;
@@ -39,7 +37,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
     private Artist artist;
     private FolderBucket folder;
 
-    /** The song a mix is built around, and what came back for it. Null means not asked yet. */
     private Track seed;
     private List<Track> mix;
     private boolean asking;
@@ -83,7 +80,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
         return p;
     }
 
-    /** A compilation: the radio around one song, kept for as long as the screen is open. */
     public static TrackListPage forMix(Track seed, String name) {
         TrackListPage p = new TrackListPage();
         p.kind = KIND_MIX;
@@ -184,8 +180,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
 
     @Override
     public void onOnline(boolean online) {
-        // A radio that came back empty because nothing could be reached is worth asking for
-        // again; one that answered is still the answer.
         if (online && mix != null && mix.isEmpty()) mix = null;
         reload();
     }
@@ -194,7 +188,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
     public void onDestroy() {
         Playback.get(host).removeListener(this);
         MediaLibrary.get().removeListener(this);
-        // A radio can still be in flight; this says the screen it was for is gone.
         gone = true;
     }
 
@@ -221,8 +214,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
                 items = MediaLibrary.resolve(host, Db.get(host).recentKeys(100));
                 break;
             case KIND_MIX:
-                // The song it grew from opens the list, so the screen can be played from the
-                // moment it appears rather than after the radio has been asked.
                 if (mix == null) askForMix();
                 items = new ArrayList<Track>();
                 items.add(seed);
@@ -248,8 +239,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
             }
 
             public void onError() {
-                // An empty answer rather than none: the screen says the radio had nothing
-                // instead of sitting on a wait that will not end.
                 deliverMix(new ArrayList<Track>());
             }
         });
@@ -285,7 +274,6 @@ public class TrackListPage extends Page implements Playback.Listener, MediaLibra
                 : kind == KIND_PLAYLIST || kind == KIND_MIX ? R.drawable.ic_playlist
                 : kind == KIND_FAVORITES ? R.drawable.ic_favorite
                 : R.drawable.ic_album;
-        // A mix wears the cover of the song it grew from, which is there before the radio answers.
         Track face = !items.isEmpty() ? items.get(0) : kind == KIND_MIX ? seed : null;
         if (face != null) {
             ArtLoader.get(host).bind(art, face, Ui.dp(host, 112), icon, Ui.dp(host, 34));

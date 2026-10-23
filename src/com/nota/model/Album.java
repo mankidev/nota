@@ -9,5 +9,4 @@ public class Album {
     public String artist;
     public int year;
     public final List<Track> tracks = new ArrayList<Track>();
-
 }

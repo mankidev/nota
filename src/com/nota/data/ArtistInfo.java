@@ -12,16 +12,9 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * What an artist is called besides their stage name: the latin reading of a Japanese or Chinese
- * name, the legal name behind an alias, and the one-line description MusicBrainz keeps.
- */
 public class ArtistInfo {
-
-    /** Facts about a person do not change, so an answer is kept for good — including "nothing". */
     private static final String KEY = "artist_info:";
     private static final int TIMEOUT_MS = 8000;
-    /** Below this the search engine is guessing, and a wrong artist is worse than no line. */
     private static final int MIN_SCORE = 90;
     private static final String CHANNEL_URL = "https://music.youtube.com/channel/";
     private static final long PACE_MS = 1100;
@@ -129,10 +122,7 @@ public class ArtistInfo {
         return other;
     }
 
-    /** The record behind a name, or null where the search is only guessing at it. */
     private static JSONObject search(String artist) throws Exception {
-        // The name comes from a file tag, and a quote or a backslash in it would end the
-        // quoted term and let the rest of the tag act as search syntax.
         String term = artist.replaceAll("[\"\\\\]", " ").trim();
         if (term.length() == 0) return null;
         String url = "https://musicbrainz.org/ws/2/artist?fmt=json&limit=1&query="
@@ -167,7 +157,6 @@ public class ArtistInfo {
         return out.toString();
     }
 
-    /** MusicBrainz sorts people as "Yonezu, Kenshi"; a header wants it the way it is spoken. */
     private static String readable(String sortName) {
         int comma = sortName.indexOf(", ");
         return comma < 0 ? sortName
@@ -200,7 +189,6 @@ public class ArtistInfo {
         return null;
     }
 
-    /** Everything past the CJK radicals block is kana, hangul or han — a name that needs a reading. */
     private static boolean isLatin(String s) {
         for (int i = 0; i < s.length(); i++) {
             if (s.charAt(i) > 0x2E7F) return false;

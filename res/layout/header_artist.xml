@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The artist's own header: no thumbnail, since the banner behind it is their picture. The
-     space above the name is what lets that banner be seen. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -68,7 +66,6 @@
         android:textSize="13sp"
         android:textColor="@color/text_secondary" />
 
-    <!-- The ellipsis the folded life ends on, made a thing that can be pressed. -->
     <TextView
         android:id="@+id/bio_more"
         android:layout_width="wrap_content"

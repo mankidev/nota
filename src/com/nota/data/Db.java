@@ -23,9 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Local store for playlists, favorites and history. */
 public class Db extends SQLiteOpenHelper {
-
     public static class Playlist {
         public long id;
         public String name;
@@ -112,11 +110,6 @@ public class Db extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_events_at ON events(at)");
     }
 
-    /**
-     * Listening time, which used to be guessed as plays times length. Old rows are seeded with
-     * that same guess so a listener's history does not read as zero on the day the real measure
-     * starts; everything after this is measured.
-     */
     private static void createHeard(SQLiteDatabase db) {
         db.execSQL("ALTER TABLE play_counts ADD COLUMN heard_ms INTEGER NOT NULL DEFAULT 0");
         db.execSQL("UPDATE play_counts SET heard_ms = plays * COALESCE("
@@ -124,11 +117,6 @@ public class Db extends SQLiteOpenHelper {
                 + "WHERE track_key LIKE 'o:%'");
     }
 
-    /**
-     * What the listener did, rather than what the song is. This catalogue carries no genre or
-     * tempo, so taste has to be read out of behaviour: how far a track was heard, and which
-     * song followed which.
-     */
     private static void createSignals(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS events ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -145,10 +133,6 @@ public class Db extends SQLiteOpenHelper {
                 + "PRIMARY KEY (from_key, to_key))");
     }
 
-    /**
-     * Online tracks live in a catalogue, not on the device, so favorites and history keep a
-     * copy of the metadata; otherwise a saved song would be an unresolvable key.
-     */
     private static void createOnlineTracks(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS online_tracks ("
                 + "source_id TEXT PRIMARY KEY,"
@@ -163,8 +147,6 @@ public class Db extends SQLiteOpenHelper {
                 + "size INTEGER NOT NULL DEFAULT 0,"
                 + "added INTEGER NOT NULL DEFAULT 0)");
     }
-
-    // ---- playlists ----
 
     public List<Playlist> playlists() {
         List<Playlist> out = new ArrayList<Playlist>();
@@ -258,18 +240,11 @@ public class Db extends SQLiteOpenHelper {
                 new String[]{String.valueOf(id), trackKey});
     }
 
-    // ---- favorites ----
-
-    /** Every row of every list asks while it scrolls, and the whole table fits in a handful of keys. */
     private synchronized Set<String> favorites() {
         if (favorites == null) favorites = new HashSet<String>(favoriteKeys());
         return favorites;
     }
 
-    /**
-     * Counts the writes that change what the home shelves would show. A screen that rebuilt
-     * itself on every return can compare this instead and stay as it is when nothing moved.
-     */
     private int revision;
 
     public int revision() {
@@ -290,7 +265,6 @@ public class Db extends SQLiteOpenHelper {
     }
 
     public boolean toggleFavorite(Track track) {
-        // Same reason as history: the favorites table stores a key, not the song itself.
         if (track.type == Track.TYPE_ONLINE) saveOnline(track);
         return toggleFavorite(track.key());
     }
@@ -321,10 +295,7 @@ public class Db extends SQLiteOpenHelper {
         return out;
     }
 
-    // ---- history ----
-
     public void recordPlay(Track track) {
-        // The catalogue copy must exist before the key lands in history, or the entry is dead.
         if (track.type == Track.TYPE_ONLINE) saveOnline(track);
         if (paused()) return;
         String key = track.key();
@@ -334,7 +305,6 @@ public class Db extends SQLiteOpenHelper {
         h.put("track_key", key);
         h.put("played_at", now);
         db.insert("history", null, h);
-        // Plain UPDATE-then-INSERT: SQLite upsert needs 3.24, which only ships from API 30.
         SQLiteStatement st = db.compileStatement(
                 "UPDATE play_counts SET plays = plays + 1, last_at = ? WHERE track_key = ?");
         st.bindLong(1, now);
@@ -352,10 +322,6 @@ public class Db extends SQLiteOpenHelper {
                 + "(SELECT id FROM history ORDER BY played_at DESC LIMIT 500)");
     }
 
-    /**
-     * Adds time the track was heard for. The row is made by {@link #recordPlay}, so a tally with
-     * nowhere to land belongs to a play that never started and is dropped.
-     */
     public void addListened(String trackKey, long ms) {
         if (ms <= 0 || paused()) return;
         SQLiteStatement st = getWritableDatabase().compileStatement(
@@ -369,12 +335,10 @@ public class Db extends SQLiteOpenHelper {
         }
     }
 
-    /** Most recent first, one entry per track. */
     public List<String> recentKeys(int limit) {
         return new ArrayList<String>(recentPlays(limit).keySet());
     }
 
-    /** The same list, each song against the last time it was played. */
     public LinkedHashMap<String, Long> recentPlays(int limit) {
         LinkedHashMap<String, Long> out = new LinkedHashMap<String, Long>();
         Cursor c = getReadableDatabase().query("history",
@@ -424,8 +388,6 @@ public class Db extends SQLiteOpenHelper {
         db.delete("transitions", null, null);
     }
 
-    // ---- taste signals ----
-
     public void recordEvent(String trackKey, int kind, int score) {
         if (paused()) return;
         SQLiteDatabase db = getWritableDatabase();
@@ -439,7 +401,6 @@ public class Db extends SQLiteOpenHelper {
                 + "(SELECT id FROM events ORDER BY at DESC LIMIT 2000)");
     }
 
-    /** Nudged rather than set, so one distracted evening cannot erase a pairing. */
     public void bumpTransition(String fromKey, String toKey, int delta) {
         if (paused()) return;
         SQLiteDatabase db = getWritableDatabase();
@@ -479,12 +440,10 @@ public class Db extends SQLiteOpenHelper {
         }
     }
 
-    /** The tracks the listener reacted best to, warmest first. */
     public List<String> topScoredKeys(int limit) {
         return new ArrayList<String>(topScored(limit).keySet());
     }
 
-    /** Same order as {@link #topScoredKeys}, but carrying the totals the ranking needs. */
     public LinkedHashMap<String, Integer> topScored(int limit) {
         LinkedHashMap<String, Integer> out = new LinkedHashMap<String, Integer>();
         Cursor c = getReadableDatabase().rawQuery(
@@ -499,7 +458,6 @@ public class Db extends SQLiteOpenHelper {
         return out;
     }
 
-    /** Songs that followed this one and were received well, strongest pairing first. */
     public LinkedHashMap<String, Integer> nextKeys(String fromKey, int limit) {
         LinkedHashMap<String, Integer> out = new LinkedHashMap<String, Integer>();
         Cursor c = getReadableDatabase().rawQuery(
@@ -513,8 +471,6 @@ public class Db extends SQLiteOpenHelper {
         }
         return out;
     }
-
-    // ---- online tracks ----
 
     public void saveOnline(Track t) {
         ContentValues v = new ContentValues();
@@ -562,10 +518,6 @@ public class Db extends SQLiteOpenHelper {
         }
     }
 
-    /**
-     * The artists behind the most listening, each represented by its most played track so a
-     * card has a cover without asking the network for an artist picture.
-     */
     public List<Track> topArtists(int limit) {
         List<Track> faces = new ArrayList<Track>();
         List<Long> totals = new ArrayList<Long>();
@@ -616,12 +568,6 @@ public class Db extends SQLiteOpenHelper {
         return out;
     }
 
-    /**
-     * How long this artist has actually sounded, summed from measured listening rather than from
-     * play counts, which credited a song abandoned after ten seconds with its whole length. Only
-     * what the catalogue half of the app knows: a local file's length lives in MediaStore, not
-     * here, and an artist page is built out of online tracks anyway.
-     */
     public long listenedMs(String artist, String channel) {
         Cursor c = getReadableDatabase().rawQuery(
                 "SELECT SUM(p.heard_ms) FROM play_counts p JOIN online_tracks t "
@@ -635,7 +581,6 @@ public class Db extends SQLiteOpenHelper {
         }
     }
 
-    /** Everything already known about an artist, so their page has something before the search. */
     public List<Track> onlineByArtist(String artist, String channel, int limit) {
         List<Track> out = new ArrayList<Track>();
         Cursor c = getReadableDatabase().rawQuery(
@@ -680,10 +625,6 @@ public class Db extends SQLiteOpenHelper {
         return channel != null ? "t.artist_channel = ?" : "LOWER(t.artist) = LOWER(?)";
     }
 
-    /**
-     * The same lookup for a whole list at once. A history or playlist screen resolves a hundred
-     * keys before it can draw, and a hundred separate queries is a visible stall.
-     */
     public Map<String, Track> online(Collection<String> sourceIds) {
         Map<String, Track> out = new HashMap<String, Track>();
         if (sourceIds.isEmpty()) return out;

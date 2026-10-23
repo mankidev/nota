@@ -9,16 +9,7 @@ import org.json.JSONObject;
 
 import java.net.URLEncoder;
 
-/**
- * A picture of an artist the catalogue keeps no banner for. MusicBrainz knows which person or
- * band a name stands for and points at their Wikidata entry, which names a photograph on
- * Wikimedia Commons — freely licensed, so it can simply be shown.
- *
- * <p>Three questions for one picture, so the answer is kept for good, including the empty one:
- * plenty of artists have no free photograph, and that does not change from one day to the next.
- */
 public class ArtistPhoto {
-
     private static final String KEY = "artist_photo:";
     private static final int TIMEOUT_MS = 8000;
 
@@ -26,9 +17,6 @@ public class ArtistPhoto {
         void onUrl(String url);
     }
 
-    /**
-     * @param width how wide the picture is wanted; Commons resizes before sending it
-     */
     public static void lookup(Context c, final String artist, final String channel,
                               final int width, final Callback cb) {
         final Context app = c.getApplicationContext();
@@ -45,7 +33,6 @@ public class ArtistPhoto {
                 try {
                     file = fetch(artist, channel);
                 } catch (Exception e) {
-                    // Nothing is written down: an answer that never arrived is not "no picture".
                     return;
                 }
                 Prefs.setString(app, key, file);
@@ -59,7 +46,6 @@ public class ArtistPhoto {
         }, "nota-artist-photo").start();
     }
 
-    /** The name of the file on Commons, or empty where the trail ends. */
     private static String fetch(String artist, String channel) throws Exception {
         JSONObject found = ArtistInfo.record(artist, channel);
         if (found == null) return "";
@@ -78,13 +64,11 @@ public class ArtistPhoto {
             JSONObject url = rel.optJSONObject("url");
             String resource = url == null ? "" : url.optString("resource", "");
             String id = resource.substring(resource.lastIndexOf('/') + 1);
-            // The entry is going into a query of ours next, and it arrived from elsewhere.
             if (id.matches("Q[0-9]+")) return id;
         }
         return null;
     }
 
-    /** P18 is the property Wikidata files an entry's photograph under. */
     private static String image(String entity) throws Exception {
         String json = Net.get("https://www.wikidata.org/w/api.php?action=wbgetclaims"
                 + "&format=json&property=P18&entity=" + entity, TIMEOUT_MS);

@@ -24,29 +24,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Serves remote audio to the player over the loopback address, keeping a copy as it goes.
- *
- * <p>YouTube's own address could be handed to a MediaPlayer as it is, and the song would play.
- * It would also be paid for on every listen, because the player keeps nothing. Standing in the
- * middle buys both: the bytes reach the player as they arrive and land in a file at the same
- * time, and the next listen is served from that file without touching the network.
- */
 public class StreamProxy {
-
-    /** A song this large is not a song; refusing it keeps a bad id from filling the cache. */
     private static final long MAX_BYTES = 24L * 1024 * 1024;
-    /** Roughly the first ten seconds at the bitrate YouTube sends. */
     private static final int HEAD_BYTES = 192 * 1024;
-    /** How much of the song is asked for at once. Large enough to keep the line busy. */
     private static final int CHUNK_BYTES = 1024 * 1024;
     private static final int KEEP = 6;
     private static final String TYPE = "audio/mp4";
-    /** Marks a request made on nobody's behalf, so it is not read as the player listening. */
     private static final String AHEAD_HEADER = "X-Ahead";
-    /** A gap this long in what the player takes means it is buffered rather than starving. */
     private static final long QUIET_MS = 1000;
-    /** However busy the player stays, a song waiting its turn is not held back longer than this. */
     private static final long HOLD_OFF_MS = 45000;
     private static final int REQUEST_TIMEOUT_MS = 5000;
     private static final int MAX_REQUEST_BYTES = 4096;
@@ -60,13 +45,6 @@ public class StreamProxy {
         return instance;
     }
 
-    /**
-     * A song being pulled off the network right now, and how much of it has reached the disk.
-     *
-     * <p>A player that seeks back to the beginning does not rewind the connection it is reading:
-     * it drops it and opens another. Without this, each of those would start the song over from
-     * YouTube, so the same song came down three or four times at once and each copy crawled.
-     */
     private static final class Fetching {
         final File part;
         final long total;
@@ -81,16 +59,11 @@ public class StreamProxy {
 
     private final Context app;
     private final File dir;
-    /** By video id, the fetch a second request for the same song should read along with. */
     private final Map<String, Fetching> fetching = new HashMap<String, Fetching>();
-    /**
-     * Loopback is not private: any other app on the device can reach this port. The path
-     * carries a secret minted per run, so a neighbour cannot use it to fetch ids of its own.
-     */
+
     private final String token;
     private final AtomicInteger live = new AtomicInteger();
     private volatile ServerSocket server;
-    /** When the player last took bytes off the network, rather than off the disk. */
     private volatile long feeding;
 
     private StreamProxy(Context app) {
@@ -119,22 +92,16 @@ public class StreamProxy {
         t.start();
     }
 
-    /** The address to hand a MediaPlayer, or null when the proxy is not listening. */
     public String url(String videoId) {
         ServerSocket s = server;
         if (s == null || !YtApi.validId(videoId)) return null;
         return "http://127.0.0.1:" + s.getLocalPort() + "/" + token + "/" + videoId;
     }
 
-    /** Whether this song would play without the network. */
     public boolean cached(String videoId) {
         return cached(app, videoId);
     }
 
-    /**
-     * The same question asked of the files alone. A list being drawn wants to know what it can
-     * offer, and it should not have to take a port to find out.
-     */
     public static boolean cached(Context c, String videoId) {
         File f = whole(c.getApplicationContext(), videoId);
         return f.isFile() && f.length() > 0;
@@ -144,15 +111,6 @@ public class StreamProxy {
         return whole(app, videoId);
     }
 
-    /**
-     * Pulls a whole song in before anything asks to hear it, so a swipe to it opens from disk.
-     * It is fetched through the proxy's own address rather than from YouTube, which puts the
-     * song on disk by the very path a played one takes; the bytes read here are thrown away.
-     *
-     * <p>Blocking: call it from a worker thread.
-     *
-     * @return whether the song is on disk afterwards
-     */
     public boolean preload(String videoId) throws IOException {
         if (cached(videoId)) return true;
         String address = url(videoId);
@@ -178,18 +136,6 @@ public class StreamProxy {
         return cached(videoId);
     }
 
-    /**
-     * Pulls in the opening of a song, which is what a swipe to it has to wait for. The whole
-     * song is worth more and is fetched after this, but it waits for a quiet line and a long
-     * song holds that up; the opening is small enough to be taken straight away.
-     *
-     * <p>The total length goes in the name. The rest is asked for by range later, and the two
-     * halves are one song only while YouTube still serves the file this length came from.
-     *
-     * <p>Blocking: call it from a worker thread.
-     *
-     * @return whether the opening is on disk afterwards
-     */
     public boolean preloadHead(String id) throws IOException {
         if (cached(id) || headFile(id) != null) return true;
         String url = YtApi.streamUrl(app, id);
@@ -225,7 +171,6 @@ public class StreamProxy {
                 from.close();
             }
             DataSaver.get(app).addDownloaded(written);
-            // A short opening is no opening: the splice later would leave a hole in the song.
             if (written != want) return false;
             return part.renameTo(new File(dir, id + "." + total + ".head"));
         } finally {
@@ -234,7 +179,6 @@ public class StreamProxy {
         }
     }
 
-    /** The length of the whole song behind a partial answer, or -1. */
     private static long totalOf(HttpURLConnection c) {
         String contentRange = c.getHeaderField("Content-Range");
         if (contentRange != null) {
@@ -250,7 +194,6 @@ public class StreamProxy {
         return c.getHeaderFieldInt("Content-Length", -1);
     }
 
-    /** The stored opening of a song, named `<id>.<total>.head`, or null. */
     private File headFile(final String id) {
         File[] found = dir.listFiles(new FilenameFilter() {
             public boolean accept(File where, String name) {
@@ -270,12 +213,6 @@ public class StreamProxy {
         }
     }
 
-    /**
-     * Waits while the player is pulling a song off the network. Two songs sharing a thin line
-     * means the one being listened to arrives at half speed, and a song fetched early is worth
-     * nothing next to the one playing now. The wait ends by itself once the player is buffered,
-     * and it is capped, so a long song never keeps the next one from being fetched at all.
-     */
     private void holdOff() {
         long until = System.currentTimeMillis() + HOLD_OFF_MS;
         while (System.currentTimeMillis() < until
@@ -288,11 +225,6 @@ public class StreamProxy {
         }
     }
 
-    /**
-     * A kept song answers before a cached one. Both are complete files; the difference is that
-     * the kept one is never pruned, so preferring it means a download stays playable offline
-     * however many other songs have been streamed since.
-     */
     private static File whole(Context app, String videoId) {
         File kept = Downloads.get(app).file(videoId);
         if (kept.isFile() && kept.length() > 0) return kept;
@@ -325,8 +257,6 @@ public class StreamProxy {
                 continue;
             }
             live.incrementAndGet();
-            // A seek opens a second connection while the first is still being read, so each
-            // one is answered on its own thread.
             Thread t = new Thread(new Runnable() {
                 public void run() {
                     try {
@@ -399,8 +329,6 @@ public class StreamProxy {
         }
     }
 
-    // ---- answering from the copy ----
-
     private void fromDisk(Socket client, File file, String range, boolean body)
             throws IOException {
         long length = file.length();
@@ -447,7 +375,6 @@ public class StreamProxy {
         }
     }
 
-    /** "bytes=100-" or "bytes=100-200", against a known length. Null when it cannot be met. */
     private static long[] parseRange(String header, long length) {
         int eq = header.indexOf('=');
         if (eq < 0) return null;
@@ -459,7 +386,6 @@ public class StreamProxy {
             String tail = spec.substring(dash + 1).trim();
             long end = tail.length() == 0 ? -1 : Long.parseLong(tail);
             if (start < 0) {
-                // A suffix range: the last `end` bytes.
                 if (end <= 0) return null;
                 start = Math.max(0, length - end);
                 end = length - 1;
@@ -473,13 +399,6 @@ public class StreamProxy {
         }
     }
 
-    // ---- answering from YouTube ----
-
-    /**
-     * Forwards YouTube's answer to the player. A request for the whole song is also written
-     * to disk, and the file is kept only if every promised byte arrived: a copy that stops in
-     * the middle would otherwise be served as a complete song forever after.
-     */
     private void fromHelper(Socket client, String id, String range, boolean body, boolean ahead)
             throws IOException {
         long began = System.currentTimeMillis();
@@ -489,9 +408,6 @@ public class StreamProxy {
             send(client, "404 Not Found");
             return;
         }
-        // A player asking for the song from the top says so as "bytes=0-" as often as by
-        // sending no range at all, and the difference is not worth a second trip upstream:
-        // both are asked for whole, and both are worth keeping.
         boolean fromTop = range == null || openEndedFromZero(range);
         if (fromTop && body) {
             Fetching live;
@@ -562,9 +478,6 @@ public class StreamProxy {
                 return;
             }
 
-            // Only a request for the song from its first byte can become the stored copy. The
-            // name carries the moment it began, because a song being pulled in ahead of time and
-            // the same song being played can be written at once, and one file cannot hold both.
             if (fromTop) part = new File(dir, id + "." + System.nanoTime() + ".part");
             OutputStream copy = part == null ? null : new FileOutputStream(part);
             if (part != null) {
@@ -574,9 +487,6 @@ public class StreamProxy {
                 }
             }
             long written = 0;
-            // A player that walks away is not a reason to stop: the bytes still on the way are
-            // the ones the connection it opens next will ask for, and they are cheaper to keep
-            // coming than to fetch again from the first byte.
             boolean listening = true;
             try {
                 byte[] buffer = new byte[65536];
@@ -613,8 +523,6 @@ public class StreamProxy {
                         c = null;
                     }
                     if (!listening && copy == null) break;
-                    // A stretch that answered with nothing will not answer with more if asked
-                    // again, and asking again is how this turns into a loop that never ends.
                     if (written == before) break;
                 }
                 if (listening) out.flush();
@@ -625,8 +533,6 @@ public class StreamProxy {
             }
             DataSaver.get(app).addDownloaded(written);
             long spent = System.currentTimeMillis() - began;
-            // Worth a line only when the song came down slower than it plays, which is what a
-            // throttled connection looks like and the one thing that makes a song stutter.
             if (spent > 2000 && written * 1000 / spent < 24 * 1024) {
                 CrashLog.note(app, "yt slow " + (written / 1024) + "KB in " + spent + "ms");
             }
@@ -640,26 +546,15 @@ public class StreamProxy {
                 }
             }
             if (part != null) {
-                // Renamed only once whole, so a half-written file is never played as a song.
                 if (!complete || !part.renameTo(whole(id))) part.delete();
                 else prune();
             }
         }
     }
 
-    /**
-     * Opens one stretch of the song upstream.
-     *
-     * <p>A megabyte at a time, never open-ended: asked for the whole file in one request,
-     * YouTube serves it at about the speed it plays — thirty kilobytes a second here, against
-     * nine hundred when the same file is asked for in pieces. The first note of a song waits on
-     * this, so the difference is the difference between starting at once and starting in five
-     * seconds.
-     */
     private HttpURLConnection chunk(String url, long from) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(20000);
-        // Generous, because this is read over whatever line the phone happens to be on.
         c.setReadTimeout(120000);
         c.setRequestProperty("Accept-Encoding", "identity");
         c.setRequestProperty("User-Agent", YtStream.USER_AGENT);
@@ -667,7 +562,6 @@ public class StreamProxy {
         return c;
     }
 
-    /** "bytes=100-" or "bytes=100-200" as start and end, the end being -1 when open. */
     private static long[] askedRange(String header) {
         int eq = header.indexOf('=');
         if (eq < 0) return null;
@@ -683,11 +577,6 @@ public class StreamProxy {
         }
     }
 
-    /**
-     * Answers a second request for a song already coming down, by reading the file the first
-     * one is filling. What has landed is served at once and the rest as it arrives, so a player
-     * that reopened the song reads back over ground the phone has already paid for.
-     */
     private void fromLive(Socket client, Fetching live, boolean ahead) throws IOException {
         StringBuilder head = new StringBuilder();
         head.append("HTTP/1.1 200 OK\r\n");
@@ -704,7 +593,6 @@ public class StreamProxy {
             while (at < live.total) {
                 long have = live.written;
                 if (at >= have) {
-                    // Caught up with the download; it is still running, so there will be more.
                     if (live.done) break;
                     try {
                         Thread.sleep(50);
@@ -726,11 +614,6 @@ public class StreamProxy {
         }
     }
 
-    /**
-     * Answers with the opening off the disk and the rest off YouTube. The player has ten
-     * seconds of song before anything has been asked of the network, which is the wait a swipe
-     * used to be, and the two halves land in the stored copy as one file.
-     */
     private void fromHead(Socket client, String id, File head, long total, boolean ahead)
             throws IOException {
         String url = YtApi.streamUrl(app, id);
@@ -754,8 +637,6 @@ public class StreamProxy {
         }
         HttpURLConnection c = null;
         boolean complete = false;
-        // The player may drop this connection and open another; the song keeps coming down
-        // either way, and the connection that follows reads it off the disk.
         boolean listening = true;
         try {
             RandomAccessFile stored = new RandomAccessFile(head, "r");
@@ -784,8 +665,6 @@ public class StreamProxy {
             }
 
             c = chunk(url, headLen);
-            // A different length means YouTube is serving a different file, and half of
-            // each is worse than neither: the opening is dropped so the next try starts clean.
             if (c.getResponseCode() != HttpURLConnection.HTTP_PARTIAL || totalOf(c) != total) {
                 head.delete();
                 return;
@@ -844,7 +723,6 @@ public class StreamProxy {
         }
     }
 
-    /** Whether a Range header asks for everything, as "bytes=0-". */
     private static boolean openEndedFromZero(String header) {
         int eq = header.indexOf('=');
         return eq >= 0 && "0-".equals(header.substring(eq + 1).trim());
@@ -856,8 +734,6 @@ public class StreamProxy {
     }
 
     private void prune() {
-        // Half-written files are left alone: one of them is a song still arriving. Openings are
-        // counted apart from whole songs, since one of each can stand for the same song.
         keepNewest(".m4a");
         keepNewest(".head");
     }

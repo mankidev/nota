@@ -15,7 +15,6 @@
             android:paddingBottom="12dp"
             android:orientation="vertical">
 
-            <!-- Home carries its own bar so it scrolls away with the shelves. -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/topbar_height"

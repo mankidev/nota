@@ -20,15 +20,7 @@ import com.nota.R;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The app's own action menu: a panel that rises from the bottom edge.
- *
- * <p>PopupMenu draws itself from the platform's widget theme rather than this app's, so the one
- * place the listener saw a foreign typeface, corner and colour was the menu they open most. A
- * panel at the bottom is also where a thumb already is, which a popup pinned to the row is not.
- */
 public class Sheet {
-
     public interface OnPick {
         void picked(int id);
     }
@@ -53,7 +45,6 @@ public class Sheet {
         this.host = host;
     }
 
-    /** An optional panel above the actions, naming what they will act on. */
     public Sheet header(View view) {
         header = view;
         return this;
@@ -101,8 +92,6 @@ public class Sheet {
         dialog.setContentView(root);
         Window w = dialog.getWindow();
         if (w != null) {
-            // The dialog theme is sized and centred for an alert; a sheet is neither, so the
-            // window is widened to the screen and pinned to the bottom edge by hand.
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT);

@@ -17,19 +17,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrackAdapter extends BaseAdapter {
-
     private final Context ctx;
     private final ArtLoader art;
     private final int artPx;
     private List<Track> items;
     private String activeKey;
-    /** Album detail lists show a track number instead of repeating the album name. */
     private boolean numbered;
-    /**
-     * A heading to draw above a row, or null for most of them. Carried by the row itself rather
-     * than by rows of its own, so a position is still a song and every list keeps counting the
-     * way its screen already does.
-     */
+
     private List<String> headings;
 
     public TrackAdapter(Context ctx, List<Track> items) {
