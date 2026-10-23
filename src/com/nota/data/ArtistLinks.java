@@ -24,7 +24,6 @@ import java.util.Set;
 public class ArtistLinks {
 
     private static final String KEY = "artist_links:";
-    private static final int TIMEOUT_MS = 8000;
     private static final int MAX = 6;
     private static final char FIELD = '\u0001';
 

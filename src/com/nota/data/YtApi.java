@@ -684,26 +684,8 @@ public class YtApi {
     }
 
     private static String channelOfVideo(Context app, String videoId) {
-        String body;
-        try {
-            body = new JSONObject()
-                    .put("videoId", videoId)
-                    .put("playlistId", "RDAMVM" + videoId)
-                    .put("isAudioOnly", true)
-                    .put("context", YT_MUSIC.context())
-                    .toString();
-        } catch (Exception e) {
-            return null;
-        }
-        String json = DiskCache.loadPost(app, "yt", "mix:" + videoId, MIX_FRESH_MS,
-                NEXT_URL, body, YT_MUSIC.ua);
-        if (json == null) return null;
-        List<JSONObject> rows = new ArrayList<JSONObject>();
-        try {
-            collect(new JSONObject(json), "playlistPanelVideoRenderer", rows);
-        } catch (Exception e) {
-            return null;
-        }
+        List<JSONObject> rows = mixRows(app, videoId);
+        if (rows == null) return null;
         for (JSONObject row : rows) {
             if (videoId.equals(row.optString("videoId"))) {
                 return channel(row.optJSONObject("longBylineText"));
@@ -837,14 +819,7 @@ public class YtApi {
         }, "nota-yt-mix").start();
     }
 
-    /**
-     * The radio YouTube Music builds around one song. It is the only outside opinion the app can
-     * ask for, so it carries the cold start: a song nobody has played next to anything yet still
-     * has fifty neighbours here.
-     *
-     * <p>Blocking. The seed itself comes back as the first entry and is dropped.
-     */
-    public static List<Track> mixBlocking(Context app, String videoId) {
+    private static List<JSONObject> mixRows(Context app, String videoId) {
         String body;
         try {
             body = new JSONObject()
@@ -859,13 +834,25 @@ public class YtApi {
         String json = DiskCache.loadPost(app, "yt", "mix:" + videoId, MIX_FRESH_MS,
                 NEXT_URL, body, YT_MUSIC.ua);
         if (json == null) return null;
-
         List<JSONObject> rows = new ArrayList<JSONObject>();
         try {
             collect(new JSONObject(json), "playlistPanelVideoRenderer", rows);
         } catch (Exception e) {
             return null;
         }
+        return rows;
+    }
+
+    /**
+     * The radio YouTube Music builds around one song. It is the only outside opinion the app can
+     * ask for, so it carries the cold start: a song nobody has played next to anything yet still
+     * has fifty neighbours here.
+     *
+     * <p>Blocking. The seed itself comes back as the first entry and is dropped.
+     */
+    public static List<Track> mixBlocking(Context app, String videoId) {
+        List<JSONObject> rows = mixRows(app, videoId);
+        if (rows == null) return null;
         List<Track> out = new ArrayList<Track>(rows.size());
         for (JSONObject row : rows) {
             String id = row.optString("videoId", "");
