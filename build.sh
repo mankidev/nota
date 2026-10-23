@@ -63,26 +63,39 @@ aapt2 link -o "$OUT/base.apk" \
   --manifest "$ROOT/AndroidManifest.xml" \
   -R "$OUT/res.zip" \
   --java "$OUT/gen" \
+  --proguard "$OUT/aapt-rules.pro" \
   --min-sdk-version $MIN_SDK \
   --target-sdk-version $TARGET_SDK \
   --auto-add-overlay
 
+echo ">> aapt2 optimize"
+aapt2 optimize -o "$OUT/base.opt.apk" \
+  --collapse-resource-names \
+  --shorten-resource-paths \
+  "$OUT/base.apk"
+mv "$OUT/base.opt.apk" "$OUT/base.apk"
+
 echo ">> javac"
 find "$ROOT/src" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"
-# -parameters sart: onsuz javac 21, enum ve ic sinif kuruculari icin MethodParameters
-# girdisini isimsiz yazar ve d8 3.3.20 bunu okurken NPE atar.
 "$JAVA_HOME/bin/javac" -parameters -source 8 -target 8 -encoding UTF-8 \
   -nowarn -Xlint:-options \
   -bootclasspath "$ANDROID_JAR" \
   -d "$OUT/classes" "@$OUT/sources.txt"
 
-echo ">> d8"
+echo ">> r8"
 find "$OUT/classes" -name '*.class' > "$OUT/classes.txt"
-d8 --lib "$ANDROID_JAR" --min-api $MIN_SDK --output "$OUT/dex" "@$OUT/classes.txt"
+if command -v r8 >/dev/null; then
+  R8=(r8)
+else
+  R8=("$JAVA_HOME/bin/java" -cp "$(dirname "$(readlink -f "$(command -v d8)")")/lib/d8.jar" com.android.tools.r8.R8)
+fi
+"${R8[@]}" --release --lib "$ANDROID_JAR" --min-api $MIN_SDK --output "$OUT/dex" \
+  --pg-conf "$OUT/aapt-rules.pro" --pg-conf "$ROOT/proguard-rules.pro" \
+  --pg-map-output "$OUT/mapping.txt" "@$OUT/classes.txt"
 
 echo ">> package"
 cp "$OUT/base.apk" "$OUT/unsigned.apk"
-(cd "$OUT/dex" && zip -q "$OUT/unsigned.apk" classes*.dex)
+(cd "$OUT/dex" && zip -q -9 "$OUT/unsigned.apk" classes*.dex)
 
 echo ">> zipalign"
 zipalign -p -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
@@ -90,7 +103,7 @@ zipalign -p -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 echo ">> sign"
 apksigner sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" \
   --key-pass "pass:$KEYSTORE_PASS" --ks-key-alias "$KEY_ALIAS" \
-  --min-sdk-version $MIN_SDK \
+  --min-sdk-version $MIN_SDK --v1-signing-enabled false \
   --out "$OUT/nota.apk" "$OUT/aligned.apk"
 
 apksigner verify --min-sdk-version $MIN_SDK "$OUT/nota.apk"
