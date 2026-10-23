@@ -1,0 +1,39 @@
+name: Bug report
+description: Something does not work the way it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+  - type: input
+    id: version
+    attributes:
+      label: Nota version
+      description: Settings, About.
+      placeholder: "1.3.3"
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version and phone
+      placeholder: "Android 14, Pixel 7"
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash report
+      description: If the app crashed, attach or paste `Download/nota-crash-*.txt`.
+      render: text

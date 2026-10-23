@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install Android build tools
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-33" "build-tools;33.0.2" > /dev/null
+          echo "$ANDROID_HOME/build-tools/33.0.2" >> "$GITHUB_PATH"
+          echo "ANDROID_JAR=$ANDROID_HOME/platforms/android-33/android.jar" >> "$GITHUB_ENV"
+      - run: ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nota-debug-apk
+          path: |
+            build/nota.apk
+            build/mapping.txt

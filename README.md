@@ -3,6 +3,7 @@
 # Nota
 
 [![Release](https://img.shields.io/github/v/release/mankidev/nota?style=flat-square&color=111111&labelColor=444444)](https://github.com/mankidev/nota/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/mankidev/nota/build.yml?branch=main&style=flat-square&color=111111&labelColor=444444)](https://github.com/mankidev/nota/actions/workflows/build.yml)
 [![Android](https://img.shields.io/badge/Android-7.0%2B-111111?style=flat-square&labelColor=444444)](AndroidManifest.xml)
 [![Licence](https://img.shields.io/github/license/mankidev/nota?style=flat-square&color=111111&labelColor=444444)](LICENSE)
 
@@ -38,3 +39,5 @@ The APK lands in `build/nota.apk`, signed with a local debug key.
 ## Licence
 
 GPL-3.0-or-later, see [LICENSE](LICENSE). Releases up to 1.3.2 were published under MIT.
+
+Contributions are welcome, see [CONTRIBUTING](.github/CONTRIBUTING.md).

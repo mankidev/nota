@@ -1,0 +1,11 @@
+name: Feature request
+description: An idea for something Nota could do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: Describe what you want to do and why the app does not let you do it now.
+    validations:
+      required: true
