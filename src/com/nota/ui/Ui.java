@@ -71,10 +71,6 @@ public class Ui {
         view.setClipToOutline(true);
     }
 
-    public static int themeColor(Context c, int colorRes) {
-        return c.getResources().getColor(colorRes, c.getTheme());
-    }
-
     public interface ColorCallback {
         void onColor(int colour);
     }
@@ -144,10 +140,6 @@ public class Ui {
 
     public static String songCount(Resources res, int n) {
         return n == 1 ? res.getString(R.string.one_song) : res.getString(R.string.n_songs, n);
-    }
-
-    public static String albumCount(Resources res, int n) {
-        return n == 1 ? res.getString(R.string.one_album) : res.getString(R.string.n_albums, n);
     }
 
     public static String artistOr(Context c, String artist) {

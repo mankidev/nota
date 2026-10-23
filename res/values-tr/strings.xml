@@ -64,7 +64,6 @@
     <string name="repeat_all">Tümünü tekrarla</string>
     <string name="repeat_one">Şarkıyı tekrarla</string>
     <string name="queue">Sıra</string>
-    <string name="lyrics">Sözler</string>
     <string name="equalizer">Ekolayzer</string>
     <string name="close">Kapat</string>
 
@@ -94,7 +93,6 @@
     <string name="download">İndir</string>
     <string name="downloading">İndiriliyor…</string>
     <string name="download_remove">İndirmeyi kaldır</string>
-    <string name="download_removed">İndirme kaldırıldı</string>
     <string name="playlist_name">Liste adı</string>
     <string name="create">Oluştur</string>
     <string name="rename">Yeniden adlandır</string>
@@ -133,7 +131,6 @@
     <string name="sleep_timer">Uyku zamanlayıcısı</string>
     <string name="sleep_off">Kapalı</string>
     <string name="sleep_minutes">%1$d dakika</string>
-    <string name="sleep_end_of_track">Şarkı bitince</string>
     <string name="sleep_active">%1$s sonra duracak</string>
     <string name="clear_history">Dinleme geçmişini temizle</string>
     <string name="history_cleared">Geçmiş temizlendi</string>

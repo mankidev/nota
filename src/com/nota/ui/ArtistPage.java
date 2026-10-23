@@ -33,8 +33,7 @@ import com.nota.data.ArtistInfo;
 import com.nota.data.ArtistLinks;
 import com.nota.data.ArtistPhoto;
 import com.nota.data.Db;
-import com.nota.data.Follows;
-import com.nota.data.Muted;
+import com.nota.data.ArtistList;
 import com.nota.data.YtApi;
 import com.nota.model.Track;
 import com.nota.player.Playback;
@@ -112,10 +111,10 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
         follow = (Button) header.findViewById(R.id.btn_follow);
         follow.setVisibility(View.VISIBLE);
-        bindFollow(Follows.has(host, name));
+        bindFollow(ArtistList.FOLLOWS.has(host, name));
         follow.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                bindFollow(Follows.toggle(host, name));
+                bindFollow(ArtistList.FOLLOWS.toggle(host, name));
             }
         });
 
@@ -268,12 +267,12 @@ public class ArtistPage extends Page implements Playback.Listener {
 
     @Override
     public void onOverflow(View anchor) {
-        final boolean muted = Muted.has(host, name);
+        final boolean muted = ArtistList.MUTED.has(host, name);
         PopupMenu menu = new PopupMenu(host, anchor);
         menu.getMenu().add(Menu.NONE, 1, 0, muted ? R.string.unmute_artist : R.string.mute_artist);
         menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
-                boolean now = Muted.toggle(host, name);
+                boolean now = ArtistList.MUTED.toggle(host, name);
                 Toast.makeText(host, host.getString(
                         now ? R.string.muted_artist : R.string.unmuted_artist, name),
                         Toast.LENGTH_SHORT).show();

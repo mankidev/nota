@@ -131,25 +131,9 @@ public class Downloads {
         return out;
     }
 
-    /** Total bytes kept, for the settings screen to show what the downloads cost. */
-    public long bytes() {
-        File[] files = dir.listFiles();
-        if (files == null) return 0;
-        long total = 0;
-        for (File f : files) total += f.length();
-        return total;
-    }
-
     public void remove(String videoId) {
         file(videoId).delete();
         announce(videoId, false);
-    }
-
-    public void removeAll() {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File f : files) f.delete();
-        announce(null, false);
     }
 
     /** Starts a fetch, unless the song is already kept or already on its way. */

@@ -99,11 +99,6 @@ public class MediaLibrary {
         return null;
     }
 
-    public FolderBucket folder(String path) {
-        for (FolderBucket f : folders) if (f.path.equals(path)) return f;
-        return null;
-    }
-
     public void addListener(Listener l) {
         if (!listeners.contains(l)) listeners.add(l);
     }

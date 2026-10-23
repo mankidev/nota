@@ -234,7 +234,7 @@ public class Recommender {
                                     boolean onePerArtist, float explore, Set<String> stale) {
         Map<String, Float> affinity = artistAffinity(app, db);
         Set<String> recent = new HashSet<String>(db.recentKeys(20));
-        Set<String> muted = Muted.keys(app);
+        Set<String> muted = ArtistList.MUTED.keys(app);
         boolean lessAi = LessAi.on(app);
         List<Candidate> ranked = new ArrayList<Candidate>(pool.values());
         // Dropped here rather than where they were gathered: a muted name is a claim about what

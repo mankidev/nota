@@ -65,7 +65,6 @@
     <string name="repeat_all">Repeat all</string>
     <string name="repeat_one">Repeat one</string>
     <string name="queue">Queue</string>
-    <string name="lyrics">Lyrics</string>
     <string name="equalizer">Equalizer</string>
     <string name="close">Close</string>
 
@@ -95,7 +94,6 @@
     <string name="download">Download</string>
     <string name="downloading">Downloading…</string>
     <string name="download_remove">Remove download</string>
-    <string name="download_removed">Download removed</string>
     <string name="playlist_name">Playlist name</string>
     <string name="create">Create</string>
     <string name="rename">Rename</string>
@@ -134,7 +132,6 @@
     <string name="sleep_timer">Sleep timer</string>
     <string name="sleep_off">Off</string>
     <string name="sleep_minutes">%1$d minutes</string>
-    <string name="sleep_end_of_track">End of track</string>
     <string name="sleep_active">Stops in %1$s</string>
     <string name="clear_history">Clear listening history</string>
     <string name="history_cleared">History cleared</string>

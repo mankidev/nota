@@ -210,16 +210,6 @@ public class Db extends SQLiteOpenHelper {
         db.delete("playlists", "id=?", arg);
     }
 
-    public String playlistName(long id) {
-        Cursor c = getReadableDatabase().query("playlists", new String[]{"name"},
-                "id=?", new String[]{String.valueOf(id)}, null, null, null);
-        try {
-            return c.moveToFirst() ? c.getString(0) : null;
-        } finally {
-            c.close();
-        }
-    }
-
     public List<String> playlistKeys(long id) {
         List<String> out = new ArrayList<String>();
         Cursor c = getReadableDatabase().query("playlist_items", new String[]{"track_key"},
@@ -266,29 +256,6 @@ public class Db extends SQLiteOpenHelper {
     public void removeFromPlaylist(long id, String trackKey) {
         getWritableDatabase().delete("playlist_items", "playlist_id=? AND track_key=?",
                 new String[]{String.valueOf(id), trackKey});
-    }
-
-    /** Rewrites the whole ordering after a drag or a removal. */
-    public void reorderPlaylist(long id, List<String> keysInOrder) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            db.delete("playlist_items", "playlist_id=?", new String[]{String.valueOf(id)});
-            int pos = 0;
-            for (String k : keysInOrder) {
-                ContentValues v = new ContentValues();
-                v.put("playlist_id", id);
-                v.put("track_key", k);
-                v.put("pos", pos++);
-                db.insert("playlist_items", null, v);
-            }
-            ContentValues u = new ContentValues();
-            u.put("updated", System.currentTimeMillis());
-            db.update("playlists", u, "id=?", new String[]{String.valueOf(id)});
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
     }
 
     // ---- favorites ----
@@ -739,16 +706,6 @@ public class Db extends SQLiteOpenHelper {
             c.close();
         }
         return out;
-    }
-
-    public Track online(String sourceId) {
-        Cursor c = getReadableDatabase().query("online_tracks", null, "source_id=?",
-                new String[]{sourceId}, null, null, null);
-        try {
-            return c.moveToFirst() ? readOnline(c) : null;
-        } finally {
-            c.close();
-        }
     }
 
     private static Track readOnline(Cursor c) {

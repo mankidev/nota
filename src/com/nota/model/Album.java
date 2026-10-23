@@ -10,9 +10,4 @@ public class Album {
     public int year;
     public final List<Track> tracks = new ArrayList<Track>();
 
-    public long durationMs() {
-        long total = 0;
-        for (Track t : tracks) total += t.durationMs;
-        return total;
-    }
 }

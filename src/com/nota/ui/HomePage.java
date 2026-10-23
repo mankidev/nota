@@ -16,10 +16,9 @@ import com.nota.R;
 import com.nota.data.ArtLoader;
 import com.nota.data.Connectivity;
 import com.nota.data.Db;
-import com.nota.data.Follows;
+import com.nota.data.ArtistList;
 import com.nota.data.LessAi;
 import com.nota.data.MediaLibrary;
-import com.nota.data.Muted;
 import com.nota.data.Recommender;
 import com.nota.data.YtApi;
 import com.nota.model.Track;
@@ -379,7 +378,7 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
         List<Track> sources = new ArrayList<Track>(db.topArtists(MOOD_ARTISTS));
         sources.addAll(artistFaces(db));
         List<String> names = new ArrayList<String>();
-        Set<String> seen = new HashSet<String>(Muted.keys(host));
+        Set<String> seen = new HashSet<String>(ArtistList.MUTED.keys(host));
         for (Track t : sources) {
             if (TextUtils.isEmpty(t.artist)) continue;
             if (!seen.add(t.artist.toLowerCase(Locale.ROOT))) continue;
@@ -582,8 +581,8 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
     private List<Track> artistFaces(Db db) {
         List<Track> faces = new ArrayList<Track>();
         // A muted name starts out as one the row has already shown, which is how it never does.
-        Set<String> seen = new HashSet<String>(Muted.keys(host));
-        List<String> follows = Follows.all(host);
+        Set<String> seen = new HashSet<String>(ArtistList.MUTED.keys(host));
+        List<String> follows = ArtistList.FOLLOWS.all(host);
         Map<String, Track> known = db.topByArtists(follows);
         for (String name : follows) {
             Track face = known.get(name);

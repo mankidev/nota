@@ -234,14 +234,6 @@ public class Playback implements MediaPlayer.OnCompletionListener,
         return buffering;
     }
 
-    public boolean hasTrack() {
-        return current() != null;
-    }
-
-    public boolean isShuffle() {
-        return shuffle;
-    }
-
     public int repeatMode() {
         return repeat;
     }
@@ -319,24 +311,8 @@ public class Playback implements MediaPlayer.OnCompletionListener,
         }
     }
 
-    public void setShuffle(boolean on) {
-        if (shuffle == on) return;
-        shuffle = on;
-        Track cur = current();
-        int curIndex = cur == null ? 0 : queue.indexOf(cur);
-        buildOrder(Math.max(0, curIndex));
-        fireQueue();
-        fireState();
-    }
-
     public void cycleRepeat() {
         repeat = (repeat + 1) % 3;
-        saveSession(position());
-        fireState();
-    }
-
-    public void setRepeat(int mode) {
-        repeat = mode;
         saveSession(position());
         fireState();
     }
@@ -391,28 +367,6 @@ public class Playback implements MediaPlayer.OnCompletionListener,
         for (Track t : tracks) {
             queue.add(t);
             order.add(Math.min(insertAt++, order.size()), queue.size() - 1);
-        }
-        fireQueue();
-    }
-
-    public void removeFromQueue(int orderIndex) {
-        if (orderIndex < 0 || orderIndex >= order.size()) return;
-        boolean wasCurrent = orderIndex == orderPos;
-        int trackIndex = order.remove(orderIndex);
-        // The track has to leave `queue` too, otherwise a later reshuffle resurrects it.
-        queue.remove(trackIndex);
-        for (int i = 0; i < order.size(); i++) {
-            if (order.get(i) > trackIndex) order.set(i, order.get(i) - 1);
-        }
-        if (orderIndex < orderPos) orderPos--;
-        if (order.isEmpty()) {
-            stop();
-            fireQueue();
-            return;
-        }
-        if (wasCurrent) {
-            if (orderPos >= order.size()) orderPos = 0;
-            openCurrent(playing);
         }
         fireQueue();
     }

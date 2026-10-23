@@ -15,7 +15,7 @@ import android.widget.TextView;
 import com.nota.R;
 import com.nota.data.Db;
 import com.nota.data.Downloads;
-import com.nota.data.Follows;
+import com.nota.data.ArtistList;
 import com.nota.data.MediaLibrary;
 import com.nota.data.YtApi;
 import com.nota.model.Album;
@@ -319,7 +319,7 @@ public class LibraryPage extends Page
                 empty.setText(query.length() > 0 ? R.string.empty_search : R.string.empty_downloads);
             } else if (section == S_FOLLOWED) {
                 empty.setText(query.length() > 0 ? R.string.empty_search
-                        : Follows.all(host).isEmpty() ? R.string.empty_followed
+                        : ArtistList.FOLLOWS.all(host).isEmpty() ? R.string.empty_followed
                         : R.string.empty_followed_releases);
             } else if (noPermission) {
                 empty.setText(R.string.perm_body);
@@ -343,7 +343,7 @@ public class LibraryPage extends Page
     }
 
     private void askFollowed() {
-        final List<String> artists = Follows.all(host);
+        final List<String> artists = ArtistList.FOLLOWS.all(host);
         final String key = artists.toString();
         if (key.equals(followedFor) || key.equals(askingFollowed)) return;
         if (artists.isEmpty()) {

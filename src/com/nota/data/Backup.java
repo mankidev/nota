@@ -151,8 +151,8 @@ public class Backup {
         root.put("playlists", playlists);
 
         root.put("tracks", describe(c, keys));
-        root.put("follows", new JSONArray(Follows.all(c)));
-        root.put("muted", new JSONArray(Muted.all(c)));
+        root.put("follows", new JSONArray(ArtistList.FOLLOWS.all(c)));
+        root.put("muted", new JSONArray(ArtistList.MUTED.all(c)));
         return root;
     }
 
@@ -210,8 +210,8 @@ public class Backup {
         } finally {
             db.endTransaction();
         }
-        Follows.addAll(c, strings(root.optJSONArray("follows")));
-        Muted.addAll(c, strings(root.optJSONArray("muted")));
+        ArtistList.FOLLOWS.addAll(c, strings(root.optJSONArray("follows")));
+        ArtistList.MUTED.addAll(c, strings(root.optJSONArray("muted")));
         store.reloaded();
         return result;
     }
