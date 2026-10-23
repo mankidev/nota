@@ -22,7 +22,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,6 +50,7 @@ public class ArtLoader {
     private final ExecutorService local = Executors.newFixedThreadPool(2);
     private final ExecutorService remote = Executors.newFixedThreadPool(4);
     private final LruCache<String, Bitmap> cache;
+    private final Map<String, List<ImageView>> waiting = new HashMap<String, List<ImageView>>();
     private final File diskDir;
 
     private ArtLoader(Context app) {
@@ -107,23 +110,38 @@ public class ArtLoader {
             return;
         }
         showPlaceholder(view, placeholderRes, placeholderPadPx);
+        List<ImageView> views = waiting.get(key);
+        if (views != null) {
+            if (!views.contains(view)) views.add(view);
+            return;
+        }
+        views = new ArrayList<ImageView>();
+        views.add(view);
+        waiting.put(key, views);
 
         final String path = track.isRemote() ? track.artUrl : track.data;
         final long albumId = track.albumId;
         final boolean stream = track.isRemote();
         (stream ? remote : local).execute(new Runnable() {
             public void run() {
-                final Bitmap bmp = stream ? loadRemote(path, sizePx)
-                        : loadAlbum(albumId, path, sizePx);
-                if (bmp != null) cache.put(key, bmp);
-                main.post(new Runnable() {
-                    public void run() {
-                        if (bmp != null && key.equals(view.getTag())) {
-                            view.setPadding(0, 0, 0, 0);
-                            view.setImageBitmap(bmp);
+                Bitmap loaded = null;
+                try {
+                    loaded = stream ? loadRemote(path, sizePx) : loadAlbum(albumId, path, sizePx);
+                    if (loaded != null) cache.put(key, loaded);
+                } finally {
+                    final Bitmap bmp = loaded;
+                    main.post(new Runnable() {
+                        public void run() {
+                            List<ImageView> views = waiting.remove(key);
+                            if (bmp == null || views == null) return;
+                            for (ImageView v : views) {
+                                if (!key.equals(v.getTag())) continue;
+                                v.setPadding(0, 0, 0, 0);
+                                v.setImageBitmap(bmp);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         });
     }
@@ -240,7 +258,12 @@ public class ArtLoader {
 
     private Bitmap loadRemote(String rawUrl, int size) {
         if (rawUrl == null || rawUrl.length() == 0) return null;
-        for (String url : sources(rawUrl, size)) {
+        List<String> sources = sources(rawUrl, size);
+        for (String url : sources) {
+            Bitmap b = fromDisk(url, size);
+            if (b != null) return b;
+        }
+        for (String url : sources) {
             Bitmap b = fetch(url, size);
             if (b != null) return b;
         }
@@ -270,20 +293,31 @@ public class ArtLoader {
         return url.substring(0, at) + "/vi/" + url.substring(at + skip, end) + "/";
     }
 
+    private File diskFile(String url, int size) {
+        return new File(diskDir, DiskCache.digest(url) + "_" + bucket(size));
+    }
+
+    private Bitmap fromDisk(String url, int size) {
+        if (url == null || url.length() == 0) return null;
+        File f = diskFile(url, size);
+        if (!f.exists()) return null;
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap b = BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+        if (b == null) {
+            f.delete();
+            return null;
+        }
+        f.setLastModified(System.currentTimeMillis());
+        DataSaver.get(app).hit(f);
+        return b;
+    }
+
     private Bitmap fetch(String url, int size) {
         if (url == null || url.length() == 0) return null;
-        File f = new File(diskDir, DiskCache.digest(url) + "_" + bucket(size));
-        if (f.exists()) {
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            o.inPreferredConfig = Bitmap.Config.RGB_565;
-            Bitmap b = BitmapFactory.decodeFile(f.getAbsolutePath(), o);
-            if (b != null) {
-                f.setLastModified(System.currentTimeMillis());
-                DataSaver.get(app).hit(f);
-                return b;
-            }
-            f.delete();
-        }
+        Bitmap cached = fromDisk(url, size);
+        if (cached != null) return cached;
+        File f = diskFile(url, size);
         NetPriority.yieldToAudio();
         HttpURLConnection conn = null;
         InputStream in = null;

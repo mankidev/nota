@@ -132,8 +132,14 @@ public class Ui {
         long h = total / 3600;
         long m = (total % 3600) / 60;
         long s = total % 60;
-        if (h > 0) return String.format("%d:%02d:%02d", h, m, s);
-        return String.format("%d:%02d", m, s);
+        StringBuilder out = new StringBuilder(8);
+        if (h > 0) {
+            out.append(h).append(':');
+            if (m < 10) out.append('0');
+        }
+        out.append(m).append(':');
+        if (s < 10) out.append('0');
+        return out.append(s).toString();
     }
 
     public static String songCount(Resources res, int n) {

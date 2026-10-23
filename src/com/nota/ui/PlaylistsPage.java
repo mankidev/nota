@@ -19,6 +19,8 @@ import java.util.List;
 /** Smart lists (favorites, history) followed by the user's own playlists. */
 public class PlaylistsPage extends Page {
 
+    private static final int FIRST_TRACK_STEP = 8;
+
     private GroupAdapter adapter;
 
     @Override
@@ -72,7 +74,7 @@ public class PlaylistsPage extends Page {
         Db db = Db.get(host);
         List<GroupAdapter.Group> groups = new ArrayList<GroupAdapter.Group>();
 
-        groups.add(smart(R.string.favorites, db.favoriteKeys().size(),
+        groups.add(smart(R.string.favorites, db.favoriteCount(),
                 R.drawable.ic_favorite, "fav"));
         groups.add(smart(R.string.recently_played, db.recentKeys(100).size(),
                 R.drawable.ic_timer, "recent"));
@@ -93,8 +95,12 @@ public class PlaylistsPage extends Page {
     }
 
     private Track firstTrack(List<String> keys) {
-        List<Track> tracks = com.nota.data.MediaLibrary.resolve(host, keys);
-        return tracks.isEmpty() ? null : tracks.get(0);
+        for (int from = 0; from < keys.size(); from += FIRST_TRACK_STEP) {
+            List<Track> tracks = com.nota.data.MediaLibrary.resolve(host,
+                    keys.subList(from, Math.min(keys.size(), from + FIRST_TRACK_STEP)));
+            if (!tracks.isEmpty()) return tracks.get(0);
+        }
+        return null;
     }
 
     private void open(GroupAdapter.Group g) {

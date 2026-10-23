@@ -98,6 +98,7 @@ public class NowPlayingActivity extends Activity
     private ValueAnimator barFade;
     private int highlighted = -1;
     private long shownDuration = -1;
+    private long shownSecond = -1;
     /**
      * The swap fades the old line out before setting the new one, so a line asked for now is
      * only readable a fraction of a second later. The clock is read that far ahead to make up
@@ -316,6 +317,7 @@ public class NowPlayingActivity extends Activity
 
             public void onStopTrackingTouch(SeekBar s) {
                 dragging = false;
+                shownSecond = -1;
                 long total = playback.duration();
                 if (total > 0) playback.seekTo(total * s.getProgress() / 1000);
             }
@@ -409,6 +411,7 @@ public class NowPlayingActivity extends Activity
         loader.bind(art, t, loader.playerSize(), R.drawable.ic_note, Ui.dp(this, 90));
         loadTint(t);
         shownDuration = playback.duration();
+        shownSecond = -1;
         duration.setText(Ui.duration(shownDuration));
 
         loadLyrics(t);
@@ -578,7 +581,10 @@ public class NowPlayingActivity extends Activity
         long total = playback.duration();
         if (!dragging) {
             seek.setProgress(total > 0 ? (int) (pos * 1000 / total) : 0);
-            position.setText(Ui.duration(pos));
+            if (pos / 1000 != shownSecond) {
+                shownSecond = pos / 1000;
+                position.setText(Ui.duration(pos));
+            }
             if (total > 0 && total != shownDuration) {
                 shownDuration = total;
                 duration.setText(Ui.duration(total));

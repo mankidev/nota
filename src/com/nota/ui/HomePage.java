@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -582,11 +583,11 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
         List<Track> faces = new ArrayList<Track>();
         // A muted name starts out as one the row has already shown, which is how it never does.
         Set<String> seen = new HashSet<String>(Muted.keys(host));
-        for (String name : Follows.all(host)) {
-            List<Track> known = db.onlineByArtist(name, null, 1);
-            if (!known.isEmpty() && seen.add(name.toLowerCase(Locale.ROOT))) {
-                faces.add(known.get(0));
-            }
+        List<String> follows = Follows.all(host);
+        Map<String, Track> known = db.topByArtists(follows);
+        for (String name : follows) {
+            Track face = known.get(name);
+            if (face != null && seen.add(name.toLowerCase(Locale.ROOT))) faces.add(face);
         }
         Set<String> shown = new HashSet<String>();
         for (Track t : db.topArtists(SLIDER)) {

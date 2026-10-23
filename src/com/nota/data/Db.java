@@ -314,6 +314,10 @@ public class Db extends SQLiteOpenHelper {
         revision++;
     }
 
+    public int favoriteCount() {
+        return favorites().size();
+    }
+
     public boolean isFavorite(String key) {
         return favorites().contains(key);
     }
@@ -676,6 +680,31 @@ public class Db extends SQLiteOpenHelper {
             while (c.moveToNext()) out.add(readOnline(c));
         } finally {
             c.close();
+        }
+        return out;
+    }
+
+    public Map<String, Track> topByArtists(List<String> names) {
+        Map<String, Track> out = new HashMap<String, Track>();
+        for (int from = 0; from < names.size(); from += 500) {
+            List<String> part = names.subList(from, Math.min(names.size(), from + 500));
+            StringBuilder rows = new StringBuilder();
+            for (int i = 0; i < part.size(); i++) rows.append(i == 0 ? "(?)" : ",(?)");
+            Cursor c = getReadableDatabase().rawQuery(
+                    "WITH n(wanted) AS (VALUES " + rows + ") "
+                            + "SELECT n.wanted, t.*, COALESCE(p.plays, 0) AS plays FROM n "
+                            + "JOIN online_tracks t ON LOWER(t.artist) = LOWER(n.wanted) "
+                            + "LEFT JOIN play_counts p ON p.track_key = 'o:' || t.source_id "
+                            + "ORDER BY plays DESC",
+                    part.toArray(new String[0]));
+            try {
+                while (c.moveToNext()) {
+                    String wanted = c.getString(0);
+                    if (!out.containsKey(wanted)) out.put(wanted, readOnline(c));
+                }
+            } finally {
+                c.close();
+            }
         }
         return out;
     }
