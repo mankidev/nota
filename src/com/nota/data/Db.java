@@ -432,6 +432,18 @@ public class Db extends SQLiteOpenHelper {
         return out;
     }
 
+    public Set<String> heardKeys() {
+        Set<String> out = new HashSet<String>();
+        Cursor c = getReadableDatabase().query("play_counts", new String[]{"track_key"},
+                null, null, null, null, null);
+        try {
+            while (c.moveToNext()) out.add(c.getString(0));
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
     public void clearHistory() {
         revision++;
         SQLiteDatabase db = getWritableDatabase();

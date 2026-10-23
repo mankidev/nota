@@ -45,12 +45,12 @@ public class Recommender {
     /** Heard lately, so it would feel like a loop rather than a continuation. */
     private static final float P_RECENT = 0.5f;
     /** Enough favourites to describe a taste, few enough that each one still costs one mix. */
-    private static final int TASTE_SEEDS = 4;
-    private static final int TASTE_POOL = 24;
+    private static final int TASTE_SEEDS = 6;
+    private static final int TASTE_POOL = 40;
     private static final float W_EXPLORE_SHELF = 0.45f;
-    private static final float P_SHOWN = 0.4f;
+    private static final float P_STALE = 0.15f;
     private static final String KEY_SHOWN = "taste_shown";
-    private static final int SHOWN_MEMORY = 60;
+    private static final int SHOWN_MEMORY = 150;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Random RND = new Random();
@@ -150,7 +150,9 @@ public class Recommender {
         // A shelf is read as a list of names, so a second song by an artist already on it reads
         // as an album track rather than as a suggestion. The queue can repeat an artist; this
         // cannot.
-        List<Track> out = rank(app, db, pool, want, true, W_EXPLORE_SHELF, shown(app));
+        Set<String> stale = shown(app);
+        stale.addAll(db.heardKeys());
+        List<Track> out = rank(app, db, pool, want, true, W_EXPLORE_SHELF, stale);
         remember(app, out);
         return out;
     }
@@ -196,7 +198,7 @@ public class Recommender {
                 app, new ArrayList<String>(db.topScored(TASTE_POOL).keySet())));
         while (!loved.isEmpty() && out.size() < TASTE_SEEDS) {
             double lean = RND.nextDouble();
-            Track t = loved.remove((int) (lean * lean * loved.size()));
+            Track t = loved.remove((int) (lean * loved.size()));
             String artist = artistKey(t);
             if (artist != null && !artists.add(artist)) continue;
             out.add(t);
@@ -250,8 +252,8 @@ public class Recommender {
             // else entirely ended up next in the queue.
             float tilt = 1f + W_AFFINITY * (a == null ? 0f : a) + explore * RND.nextFloat();
             if (recent.contains(c.track.key())) tilt -= P_RECENT;
-            if (stale.contains(c.track.key())) tilt -= P_SHOWN;
             c.score *= tilt;
+            if (stale.contains(c.track.key())) c.score *= P_STALE;
         }
         Collections.sort(ranked, new Comparator<Candidate>() {
             public int compare(Candidate x, Candidate y) {

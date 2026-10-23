@@ -52,6 +52,7 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
     private static final int FRESH_ARTISTS = 3;
     /** How many favourites have to change before the suggestions are worth asking for again. */
     private static final int TASTE = 5;
+    private static final long FOR_YOU_FRESH_MS = 2L * 60 * 60 * 1000;
 
     private LinearLayout sections;
     private ScrollView scroll;
@@ -62,6 +63,7 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
     /** What the recommender last answered, kept so returning to this screen costs nothing. */
     private List<Track> forYou = new ArrayList<Track>();
     private String askedFor;
+    private long askedAt;
     private boolean asking;
 
     /** What the loved artists have just put out, and which names that answer was for. */
@@ -464,9 +466,11 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
      */
     private void askForYou(Db db) {
         String taste = TextUtils.join(",", db.mostPlayedKeys(TASTE));
-        if (asking || taste.length() == 0 || taste.equals(askedFor)) return;
+        boolean old = System.currentTimeMillis() - askedAt > FOR_YOU_FRESH_MS;
+        if (asking || taste.length() == 0 || (taste.equals(askedFor) && !old)) return;
         asking = true;
         askedFor = taste;
+        askedAt = System.currentTimeMillis();
         Recommender.forTaste(host, SHELF * FOR_YOU_PAGES, new Recommender.Callback() {
             public void onTracks(List<Track> tracks) {
                 asking = false;
