@@ -16,7 +16,7 @@ import com.nota.R;
 import com.nota.data.ArtLoader;
 import com.nota.data.Connectivity;
 import com.nota.data.Db;
-import com.nota.data.ArtistList;
+import com.nota.data.PrefList;
 import com.nota.data.LessAi;
 import com.nota.data.MediaLibrary;
 import com.nota.data.Recommender;
@@ -322,7 +322,7 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
         List<Track> sources = new ArrayList<Track>(db.topArtists(MOOD_ARTISTS));
         sources.addAll(artistFaces(db));
         List<String> names = new ArrayList<String>();
-        Set<String> seen = new HashSet<String>(ArtistList.MUTED.keys(host));
+        Set<String> seen = new HashSet<String>(PrefList.MUTED.keys(host));
         for (Track t : sources) {
             if (TextUtils.isEmpty(t.artist)) continue;
             if (!seen.add(t.artist.toLowerCase(Locale.ROOT))) continue;
@@ -388,7 +388,7 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
     }
 
     private void askForYou(Db db) {
-        String taste = TextUtils.join(",", db.mostPlayedKeys(TASTE));
+        String taste = TextUtils.join(",", db.recentlyEnjoyed(TASTE));
         boolean old = System.currentTimeMillis() - askedAt > FOR_YOU_FRESH_MS;
         if (asking || taste.length() == 0 || (taste.equals(askedFor) && !old)) return;
         asking = true;
@@ -495,8 +495,8 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
 
     private List<Track> artistFaces(Db db) {
         List<Track> faces = new ArrayList<Track>();
-        Set<String> seen = new HashSet<String>(ArtistList.MUTED.keys(host));
-        List<String> follows = ArtistList.FOLLOWS.all(host);
+        Set<String> seen = new HashSet<String>(PrefList.MUTED.keys(host));
+        List<String> follows = PrefList.FOLLOWS.all(host);
         Map<String, Track> known = db.topByArtists(follows);
         for (String name : follows) {
             Track face = known.get(name);

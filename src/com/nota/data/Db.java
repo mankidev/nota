@@ -458,6 +458,21 @@ public class Db extends SQLiteOpenHelper {
         return out;
     }
 
+    public List<String> recentlyEnjoyed(int limit) {
+        List<String> out = new ArrayList<String>();
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT track_key FROM events GROUP BY track_key "
+                        + "HAVING MAX(CASE WHEN score > 0 THEN at END) >= MAX(at) "
+                        + "ORDER BY MAX(at) DESC LIMIT ?",
+                new String[]{String.valueOf(limit)});
+        try {
+            while (c.moveToNext()) out.add(c.getString(0));
+        } finally {
+            c.close();
+        }
+        return out;
+    }
+
     public LinkedHashMap<String, Integer> nextKeys(String fromKey, int limit) {
         LinkedHashMap<String, Integer> out = new LinkedHashMap<String, Integer>();
         Cursor c = getReadableDatabase().rawQuery(

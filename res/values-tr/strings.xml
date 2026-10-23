@@ -157,6 +157,8 @@
     <string name="copied">Şarkı adı kopyalandı</string>
     <string name="follow">Abone ol</string>
     <string name="following">Abone olundu</string>
+    <string name="ignore_track">Bu şarkıyı görmezden gel</string>
+    <string name="ignored_track">Bu şarkı artık önerilmeyecek</string>
     <string name="mute_artist">Bu sanatçıyı önerme</string>
     <string name="unmute_artist">Bu sanatçıyı yine öner</string>
     <string name="muted_artist">%1$s artık önerilmeyecek</string>

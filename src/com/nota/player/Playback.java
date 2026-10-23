@@ -347,6 +347,27 @@ public class Playback implements MediaPlayer.OnCompletionListener,
         fireQueue();
     }
 
+    public void removeFromQueue(int orderIndex) {
+        if (orderIndex < 0 || orderIndex >= order.size()) return;
+        boolean wasCurrent = orderIndex == orderPos;
+        int trackIndex = order.remove(orderIndex);
+        queue.remove(trackIndex);
+        for (int i = 0; i < order.size(); i++) {
+            if (order.get(i) > trackIndex) order.set(i, order.get(i) - 1);
+        }
+        if (orderIndex < orderPos) orderPos--;
+        if (order.isEmpty()) {
+            stop();
+            fireQueue();
+            return;
+        }
+        if (wasCurrent) {
+            if (orderPos >= order.size()) orderPos = 0;
+            openCurrent(playing);
+        }
+        fireQueue();
+    }
+
     public void jumpTo(int orderIndex) {
         if (orderIndex < 0 || orderIndex >= order.size()) return;
         orderPos = orderIndex;

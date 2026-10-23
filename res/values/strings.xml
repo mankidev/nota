@@ -157,6 +157,8 @@
     <string name="copied">Title copied</string>
     <string name="follow">Subscribe</string>
     <string name="following">Subscribed</string>
+    <string name="ignore_track">Ignore this song</string>
+    <string name="ignored_track">This song will not be suggested</string>
     <string name="mute_artist">Don\'t suggest this artist</string>
     <string name="unmute_artist">Suggest this artist again</string>
     <string name="muted_artist">%1$s will not be suggested</string>

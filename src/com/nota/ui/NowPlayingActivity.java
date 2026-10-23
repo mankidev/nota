@@ -43,12 +43,15 @@ import com.nota.data.ArtLoader;
 import com.nota.data.Db;
 import com.nota.data.Downloads;
 import com.nota.data.Lyrics;
+import com.nota.data.PrefList;
+import com.nota.data.Signals;
 import com.nota.data.YtApi;
 import com.nota.model.Track;
 import com.nota.player.Playback;
 import com.nota.player.PlayerService;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class NowPlayingActivity extends Activity
@@ -60,6 +63,8 @@ public class NowPlayingActivity extends Activity
     private static final int REPEAT_IDLE = 0x59FFFFFF;
 
     private static final int HEART_EVERY_MS = 110;
+    private static final int QUEUE_FAV = 1;
+    private static final int QUEUE_IGNORE = 2;
 
     private static final int TINT_FADE_MS = 320;
 
@@ -442,8 +447,45 @@ public class NowPlayingActivity extends Activity
                     playback.jumpTo(index);
                 }
             });
+            row.setOnLongClickListener(new View.OnLongClickListener() {
+                public boolean onLongClick(View v) {
+                    showQueueMenu(index);
+                    return true;
+                }
+            });
             if (reused == null) queueList.addView(row);
         }
+    }
+
+    private void showQueueMenu(final int index) {
+        List<Track> q = playback.queue();
+        if (index < 0 || index >= q.size()) return;
+        final Track track = q.get(index);
+        final Db db = Db.get(this);
+        boolean favorite = db.isFavorite(track.key());
+        new Sheet(this).header(TrackMenu.trackHeader(this, track))
+                .add(QUEUE_FAV, favorite ? R.drawable.ic_favorite : R.drawable.ic_favorite_border,
+                        favorite ? R.string.favorite_remove : R.string.favorite_add)
+                .add(QUEUE_IGNORE, R.drawable.ic_close, R.string.ignore_track)
+                .show(new Sheet.OnPick() {
+                    public void picked(int id) {
+                        if (id == QUEUE_FAV) {
+                            if (db.toggleFavorite(track)) {
+                                Signals.get(NowPlayingActivity.this).liked(track);
+                            }
+                            fillQueue();
+                            return;
+                        }
+                        PrefList.IGNORED.addAll(NowPlayingActivity.this,
+                                Collections.singletonList(track.key()));
+                        List<Track> now = playback.queue();
+                        if (index < now.size() && now.get(index).key().equals(track.key())) {
+                            playback.removeFromQueue(index);
+                        }
+                        Toast.makeText(NowPlayingActivity.this, R.string.ignored_track,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void maybeLoadMore() {

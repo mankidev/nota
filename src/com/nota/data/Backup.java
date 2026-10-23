@@ -150,8 +150,11 @@ public class Backup {
         root.put("playlists", playlists);
 
         root.put("tracks", describe(c, keys));
-        root.put("follows", new JSONArray(ArtistList.FOLLOWS.all(c)));
-        root.put("muted", new JSONArray(ArtistList.MUTED.all(c)));
+        root.put("follows", new JSONArray(PrefList.FOLLOWS.all(c)));
+        root.put("muted", new JSONArray(PrefList.MUTED.all(c)));
+        List<String> ignored = new ArrayList<String>();
+        for (String key : PrefList.IGNORED.all(c)) if (key.startsWith("o:")) ignored.add(key);
+        root.put("ignored", new JSONArray(ignored));
         return root;
     }
 
@@ -209,8 +212,9 @@ public class Backup {
         } finally {
             db.endTransaction();
         }
-        ArtistList.FOLLOWS.addAll(c, strings(root.optJSONArray("follows")));
-        ArtistList.MUTED.addAll(c, strings(root.optJSONArray("muted")));
+        PrefList.FOLLOWS.addAll(c, strings(root.optJSONArray("follows")));
+        PrefList.MUTED.addAll(c, strings(root.optJSONArray("muted")));
+        PrefList.IGNORED.addAll(c, strings(root.optJSONArray("ignored")));
         store.reloaded();
         return result;
     }

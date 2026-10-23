@@ -8,14 +8,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public class ArtistList {
-    public static final ArtistList FOLLOWS = new ArtistList("followed_artists");
-    public static final ArtistList MUTED = new ArtistList("muted_artists");
+public class PrefList {
+    public static final PrefList FOLLOWS = new PrefList("followed_artists", true);
+    public static final PrefList MUTED = new PrefList("muted_artists", true);
+    public static final PrefList IGNORED = new PrefList("ignored_tracks", false);
 
     private final String key;
+    private final boolean folded;
 
-    private ArtistList(String key) {
+    private PrefList(String key, boolean folded) {
         this.key = key;
+        this.folded = folded;
     }
 
     public List<String> all(Context c) {
@@ -28,32 +31,40 @@ public class ArtistList {
 
     public Set<String> keys(Context c) {
         Set<String> out = new HashSet<String>();
-        for (String a : all(c)) out.add(a.toLowerCase(Locale.ROOT).trim());
+        for (String a : all(c)) out.add(fold(a));
         return out;
     }
 
-    public boolean has(Context c, String artist) {
-        return artist != null && keys(c).contains(artist.toLowerCase(Locale.ROOT).trim());
+    public boolean has(Context c, String name) {
+        return name != null && keys(c).contains(fold(name));
     }
 
-    public boolean toggle(Context c, String artist) {
+    private String fold(String name) {
+        return folded ? name.toLowerCase(Locale.ROOT).trim() : name;
+    }
+
+    private boolean same(String a, String b) {
+        return folded ? a.equalsIgnoreCase(b) : a.equals(b);
+    }
+
+    public boolean toggle(Context c, String name) {
         List<String> kept = new ArrayList<String>();
         boolean removed = false;
         for (String a : all(c)) {
-            if (a.equalsIgnoreCase(artist)) removed = true;
+            if (same(a, name)) removed = true;
             else kept.add(a);
         }
-        if (!removed) kept.add(0, artist);
+        if (!removed) kept.add(0, name);
         save(c, kept);
         return !removed;
     }
 
-    public void addAll(Context c, List<String> artists) {
+    public void addAll(Context c, List<String> names) {
         List<String> kept = all(c);
-        for (String artist : artists) {
+        for (String name : names) {
             boolean known = false;
-            for (String a : kept) if (a.equalsIgnoreCase(artist)) known = true;
-            if (!known) kept.add(artist);
+            for (String a : kept) if (same(a, name)) known = true;
+            if (!known) kept.add(name);
         }
         save(c, kept);
     }

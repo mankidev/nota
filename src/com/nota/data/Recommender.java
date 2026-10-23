@@ -33,7 +33,7 @@ public class Recommender {
     private static final float W_EXPLORE = 0.15f;
     private static final float P_RECENT = 0.5f;
     private static final int TASTE_SEEDS = 6;
-    private static final int TASTE_POOL = 40;
+    private static final int RECENT_POOL = 12;
     private static final float W_EXPLORE_SHELF = 0.45f;
     private static final float P_STALE = 0.15f;
     private static final String KEY_SHOWN = "taste_shown";
@@ -159,11 +159,11 @@ public class Recommender {
     private static List<Track> tasteSeeds(Context app, Db db) {
         List<Track> out = new ArrayList<Track>();
         Set<String> artists = new HashSet<String>();
-        List<Track> loved = new ArrayList<Track>(MediaLibrary.resolve(
-                app, new ArrayList<String>(db.topScored(TASTE_POOL).keySet())));
-        while (!loved.isEmpty() && out.size() < TASTE_SEEDS) {
+        List<Track> recent = new ArrayList<Track>(MediaLibrary.resolve(
+                app, db.recentlyEnjoyed(RECENT_POOL)));
+        while (!recent.isEmpty() && out.size() < TASTE_SEEDS) {
             double lean = RND.nextDouble();
-            Track t = loved.remove((int) (lean * loved.size()));
+            Track t = recent.remove((int) (lean * lean * recent.size()));
             String artist = artistKey(t);
             if (artist != null && !artists.add(artist)) continue;
             out.add(t);
@@ -196,12 +196,13 @@ public class Recommender {
                                     boolean onePerArtist, float explore, Set<String> stale) {
         Map<String, Float> affinity = artistAffinity(app, db);
         Set<String> recent = new HashSet<String>(db.recentKeys(20));
-        Set<String> muted = ArtistList.MUTED.keys(app);
+        Set<String> muted = PrefList.MUTED.keys(app);
+        Set<String> ignored = PrefList.IGNORED.keys(app);
         boolean lessAi = LessAi.on(app);
         List<Candidate> ranked = new ArrayList<Candidate>(pool.values());
         for (Iterator<Candidate> it = ranked.iterator(); it.hasNext(); ) {
             Track t = it.next().track;
-            if (muted.contains(artistKey(t)) || (lessAi && t.isRemote() && LessAi.looksAi(t))) {
+            if (muted.contains(artistKey(t)) || ignored.contains(t.key()) || (lessAi && t.isRemote() && LessAi.looksAi(t))) {
                 it.remove();
             }
         }

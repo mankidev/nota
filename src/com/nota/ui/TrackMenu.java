@@ -1,5 +1,6 @@
 package com.nota.ui;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.DialogInterface;
@@ -119,7 +120,7 @@ public class TrackMenu {
         });
     }
 
-    private static View trackHeader(MainActivity host, Track track) {
+    static View trackHeader(Activity host, Track track) {
         View v = LayoutInflater.from(host).inflate(R.layout.sheet_track_header, null, false);
         ImageView art = (ImageView) v.findViewById(R.id.art);
         Ui.round(art, host.getResources().getDimension(R.dimen.art_radius));

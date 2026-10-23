@@ -1,0 +1,4 @@
+- Suggestions for you now follow the songs you listened to lately and change more often.
+- Long-press a song in Up next to favorite it or ignore it. An ignored song is never suggested again.
+- Artists with the same name no longer share one page.
+- Faster lists and covers, and a smaller app (about 220 KB).
