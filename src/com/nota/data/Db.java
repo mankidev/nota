@@ -11,11 +11,14 @@ import com.nota.model.Track;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,7 +34,7 @@ public class Db extends SQLiteOpenHelper {
     }
 
     private static final String NAME = "nota.db";
-    private static final int VERSION = 5;
+    private static final int VERSION = 6;
 
     private static Db instance;
 
@@ -87,6 +90,7 @@ public class Db extends SQLiteOpenHelper {
         createOnlineTracks(db);
         createSignals(db);
         createTimeIndexes(db);
+        addArtistChannel(db);
     }
 
     @Override
@@ -95,6 +99,12 @@ public class Db extends SQLiteOpenHelper {
         if (from < 3) createSignals(db);
         if (from < 4) createHeard(db);
         if (from < 5) createTimeIndexes(db);
+        if (from < 6) addArtistChannel(db);
+    }
+
+    private static void addArtistChannel(SQLiteDatabase db) {
+        db.execSQL("ALTER TABLE online_tracks ADD COLUMN artist_channel TEXT");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_online_channel ON online_tracks(artist_channel)");
     }
 
     private static void createTimeIndexes(SQLiteDatabase db) {
@@ -536,8 +546,37 @@ public class Db extends SQLiteOpenHelper {
         v.put("year", t.year);
         v.put("size", t.sizeBytes);
         v.put("added", System.currentTimeMillis());
+        v.put("artist_channel", t.artistChannel != null ? t.artistChannel
+                : storedChannel(t.sourceId));
         getWritableDatabase().insertWithOnConflict("online_tracks", null, v,
                 SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private String storedChannel(String sourceId) {
+        Cursor c = getReadableDatabase().rawQuery(
+                "SELECT artist_channel FROM online_tracks WHERE source_id = ?",
+                new String[]{sourceId});
+        try {
+            return c.moveToFirst() ? c.getString(0) : null;
+        } finally {
+            c.close();
+        }
+    }
+
+    public void claim(String channel, Collection<Track> tracks) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (Track t : tracks) {
+                if (!channel.equals(t.artistChannel)) continue;
+                db.execSQL("UPDATE online_tracks SET artist_channel = ? "
+                        + "WHERE source_id = ? AND artist_channel IS NULL",
+                        new Object[]{channel, t.sourceId});
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
     }
 
     /**
@@ -545,19 +584,51 @@ public class Db extends SQLiteOpenHelper {
      * card has a cover without asking the network for an artist picture.
      */
     public List<Track> topArtists(int limit) {
-        List<Track> out = new ArrayList<Track>();
+        List<Track> faces = new ArrayList<Track>();
+        List<Long> totals = new ArrayList<Long>();
         Cursor c = getReadableDatabase().rawQuery(
                 "SELECT t.*, MAX(p.plays) AS peak, SUM(p.plays) AS total "
                         + "FROM play_counts p JOIN online_tracks t "
                         + "ON t.source_id = SUBSTR(p.track_key, 3) "
                         + "WHERE p.track_key LIKE 'o:%' "
                         + "AND t.artist IS NOT NULL AND t.artist <> '' "
-                        + "GROUP BY LOWER(t.artist) ORDER BY total DESC, peak DESC LIMIT ?",
-                new String[]{String.valueOf(limit)});
+                        + "GROUP BY LOWER(t.artist), COALESCE(t.artist_channel, '') "
+                        + "ORDER BY total DESC, peak DESC LIMIT ?",
+                new String[]{String.valueOf(limit * 3)});
         try {
-            while (c.moveToNext()) out.add(readOnline(c));
+            while (c.moveToNext()) {
+                faces.add(readOnline(c));
+                totals.add(c.getLong(c.getColumnIndexOrThrow("total")));
+            }
         } finally {
             c.close();
+        }
+        Map<String, Integer> named = new HashMap<String, Integer>();
+        Set<String> shared = new HashSet<String>();
+        for (int i = 0; i < faces.size(); i++) {
+            if (faces.get(i).artistChannel == null) continue;
+            String name = faces.get(i).artist.toLowerCase(Locale.ROOT);
+            if (named.put(name, i) != null) shared.add(name);
+        }
+        for (int i = 0; i < faces.size(); i++) {
+            if (faces.get(i).artistChannel != null) continue;
+            String name = faces.get(i).artist.toLowerCase(Locale.ROOT);
+            Integer owner = shared.contains(name) ? null : named.get(name);
+            if (owner == null) continue;
+            totals.set(owner, totals.get(owner) + totals.get(i));
+            totals.set(i, -1L);
+        }
+        List<Integer> order = new ArrayList<Integer>();
+        for (int i = 0; i < faces.size(); i++) if (totals.get(i) >= 0) order.add(i);
+        Collections.sort(order, new Comparator<Integer>() {
+            public int compare(Integer a, Integer b) {
+                return Long.compare(totals.get(b), totals.get(a));
+            }
+        });
+        List<Track> out = new ArrayList<Track>();
+        for (int i : order) {
+            if (out.size() >= limit) break;
+            out.add(faces.get(i));
         }
         return out;
     }
@@ -568,12 +639,12 @@ public class Db extends SQLiteOpenHelper {
      * what the catalogue half of the app knows: a local file's length lives in MediaStore, not
      * here, and an artist page is built out of online tracks anyway.
      */
-    public long listenedMs(String artist) {
+    public long listenedMs(String artist, String channel) {
         Cursor c = getReadableDatabase().rawQuery(
                 "SELECT SUM(p.heard_ms) FROM play_counts p JOIN online_tracks t "
                         + "ON t.source_id = SUBSTR(p.track_key, 3) "
-                        + "WHERE p.track_key LIKE 'o:%' AND LOWER(t.artist) = LOWER(?)",
-                new String[]{artist});
+                        + "WHERE p.track_key LIKE 'o:%' AND " + artistIs(channel),
+                new String[]{channel != null ? channel : artist});
         try {
             return c.moveToFirst() ? c.getLong(0) : 0;
         } finally {
@@ -582,19 +653,23 @@ public class Db extends SQLiteOpenHelper {
     }
 
     /** Everything already known about an artist, so their page has something before the search. */
-    public List<Track> onlineByArtist(String artist, int limit) {
+    public List<Track> onlineByArtist(String artist, String channel, int limit) {
         List<Track> out = new ArrayList<Track>();
         Cursor c = getReadableDatabase().rawQuery(
                 "SELECT t.*, COALESCE(p.plays, 0) AS plays FROM online_tracks t "
                         + "LEFT JOIN play_counts p ON p.track_key = 'o:' || t.source_id "
-                        + "WHERE LOWER(t.artist) = LOWER(?) ORDER BY plays DESC LIMIT ?",
-                new String[]{artist, String.valueOf(limit)});
+                        + "WHERE " + artistIs(channel) + " ORDER BY plays DESC LIMIT ?",
+                new String[]{channel != null ? channel : artist, String.valueOf(limit)});
         try {
             while (c.moveToNext()) out.add(readOnline(c));
         } finally {
             c.close();
         }
         return out;
+    }
+
+    private static String artistIs(String channel) {
+        return channel != null ? "t.artist_channel = ?" : "LOWER(t.artist) = LOWER(?)";
     }
 
     /**
@@ -648,6 +723,7 @@ public class Db extends SQLiteOpenHelper {
         t.trackNo = c.getInt(c.getColumnIndexOrThrow("track_no"));
         t.year = c.getInt(c.getColumnIndexOrThrow("year"));
         t.sizeBytes = c.getLong(c.getColumnIndexOrThrow("size"));
+        t.artistChannel = c.getString(c.getColumnIndexOrThrow("artist_channel"));
         return t;
     }
 }

@@ -8,7 +8,6 @@ import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -48,9 +47,10 @@ public class ArtistLinks {
         void onLinks(List<Link> links);
     }
 
-    public static void lookup(Context c, final String artist, final Callback cb) {
+    public static void lookup(Context c, final String artist, final String channel,
+                              final Callback cb) {
         final Context app = c.getApplicationContext();
-        final String key = KEY + artist.toLowerCase(Locale.ROOT);
+        final String key = KEY + ArtistInfo.cacheKey(artist, channel);
         String cached = Prefs.getString(app, key, null);
         if (cached != null) {
             List<Link> links = parse(cached);
@@ -62,7 +62,7 @@ public class ArtistLinks {
             public void run() {
                 final String stored;
                 try {
-                    stored = store(fetch(artist));
+                    stored = store(fetch(artist, channel));
                 } catch (Exception e) {
                     // An answer that never arrived is not "no links", so nothing is written down.
                     return;
@@ -79,14 +79,11 @@ public class ArtistLinks {
         }, "nota-artist-links").start();
     }
 
-    private static List<Link> fetch(String artist) throws Exception {
-        JSONObject found = ArtistInfo.search(artist);
-        String mbid = found == null ? null : found.optString("id", null);
+    private static List<Link> fetch(String artist, String channel) throws Exception {
+        JSONObject found = ArtistInfo.record(artist, channel);
         List<Link> out = new ArrayList<Link>();
-        if (mbid == null) return out;
-        String json = Net.get("https://musicbrainz.org/ws/2/artist/"
-                + URLEncoder.encode(mbid, "UTF-8") + "?fmt=json&inc=url-rels", TIMEOUT_MS);
-        JSONArray rels = new JSONObject(json).optJSONArray("relations");
+        if (found == null) return out;
+        JSONArray rels = found.optJSONArray("relations");
         if (rels == null) return out;
 
         Set<String> taken = new HashSet<String>();

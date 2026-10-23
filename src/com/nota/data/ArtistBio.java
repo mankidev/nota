@@ -27,9 +27,10 @@ public class ArtistBio {
         void onBio(String text);
     }
 
-    public static void lookup(Context c, final String artist, final Callback cb) {
+    public static void lookup(Context c, final String artist, final String channel,
+                              final Callback cb) {
         final Context app = c.getApplicationContext();
-        final String key = KEY + artist.toLowerCase(Locale.ROOT);
+        final String key = KEY + ArtistInfo.cacheKey(artist, channel);
         final String lang = language();
         String cached = Prefs.getString(app, key, null);
         if (cached != null) {
@@ -41,7 +42,7 @@ public class ArtistBio {
             public void run() {
                 final String text;
                 try {
-                    text = fetch(artist, lang);
+                    text = fetch(artist, channel, lang);
                 } catch (Exception e) {
                     // An answer that never arrived is not "no life", so nothing is written down.
                     return;
@@ -57,11 +58,10 @@ public class ArtistBio {
         }, "nota-artist-bio").start();
     }
 
-    private static String fetch(String artist, String lang) throws Exception {
-        JSONObject found = ArtistInfo.search(artist);
-        String mbid = found == null ? null : found.optString("id", null);
-        if (mbid == null) return "";
-        String entity = ArtistPhoto.wikidataId(mbid);
+    private static String fetch(String artist, String channel, String lang) throws Exception {
+        JSONObject found = ArtistInfo.record(artist, channel);
+        if (found == null) return "";
+        String entity = ArtistPhoto.wikidataId(found);
         if (entity == null) return "";
 
         JSONObject links = sitelinks(entity, lang);

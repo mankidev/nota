@@ -47,6 +47,10 @@ public class YtApi {
         return true;
     }
 
+    public static boolean validChannel(String id) {
+        return id != null && id.matches("UC[A-Za-z0-9_-]{22}");
+    }
+
     public interface TrackCallback {
         void onTracks(List<Track> tracks);
 
@@ -217,6 +221,7 @@ public class YtApi {
         // The second column packs artist, album and length into one bulleted line.
         String[] meta = bullets(column(row, 1));
         if (meta.length > 0) t.artist = meta[0];
+        t.artistChannel = channel(columnText(row, 1));
         if (meta.length >= 2) t.durationMs = parseLength(meta[meta.length - 1]);
         if (meta.length >= 3) t.album = meta[meta.length - 2];
         t.artUrl = thumbnail(row);
@@ -431,11 +436,13 @@ public class YtApi {
         String album = null;
         String art = null;
         String by = artist;
+        String byChannel = null;
         if (!heads.isEmpty()) {
             JSONObject head = heads.get(0);
             album = text(head.optJSONObject("title"));
             String strap = text(head.optJSONObject("straplineTextOne"));
             if (!TextUtils.isEmpty(strap)) by = strap;
+            byChannel = channel(head.optJSONObject("straplineTextOne"));
             art = thumbnail(head);
         }
         List<JSONObject> rows = new ArrayList<JSONObject>();
@@ -451,6 +458,7 @@ public class YtApi {
             t.sourceId = PREFIX + id;
             t.title = title;
             t.artist = by;
+            t.artistChannel = byChannel;
             t.album = album;
             t.year = r.year;
             t.artUrl = art;
@@ -634,53 +642,144 @@ public class YtApi {
     /** A banner outlives a record: an artist changes theirs about as often as they change label. */
     private static final long BANNER_FRESH_MS = 30L * 24 * 60 * 60 * 1000;
 
-    public interface UrlCallback {
-        /** Null when there is no picture to be had. */
-        void onUrl(String url);
+    public static class Artist {
+        public String channel;
+        public String banner;
+        public List<Track> songs;
     }
 
-    public static void artistBanner(Context c, final String artist, final UrlCallback cb) {
+    public interface ArtistCallback {
+        void onArtist(Artist artist);
+    }
+
+    public static void artist(Context c, final String name, final String channel,
+                              final String videoId, final ArtistCallback cb) {
         final Context app = c.getApplicationContext();
         new Thread(new Runnable() {
             public void run() {
-                final String url = artistBannerBlocking(app, artist);
+                final Artist found = artistBlocking(app, name, channel, videoId);
                 MAIN.post(new Runnable() {
                     public void run() {
-                        cb.onUrl(url);
+                        cb.onArtist(found);
                     }
                 });
             }
-        }, "nota-yt-banner").start();
+        }, "nota-yt-artist").start();
     }
 
-    /**
-     * The wide picture from the top of an artist's own page. Two questions again: the search
-     * knows which channel the name belongs to, and only the channel carries the banner.
-     *
-     * <p>Blocking. Null means the artist has none, or could not be reached.
-     */
-    public static String artistBannerBlocking(Context app, String artist) {
-        String channel = artistChannel(app, artist);
-        if (channel == null) return null;
+    public static Artist artistBlocking(Context app, String name, String channel,
+                                        String videoId) {
+        Artist out = new Artist();
+        out.channel = validChannel(channel) ? channel
+                : validId(videoId) ? channelOfVideo(app, videoId) : null;
+        if (out.channel == null) out.channel = artistChannel(app, name);
+        if (out.channel == null) return out;
+        JSONObject page = browse(app, out.channel, null, "chan:" + out.channel, BANNER_FRESH_MS);
+        if (page == null) return out;
+        List<JSONObject> heads = new ArrayList<JSONObject>();
+        collect(page, "musicImmersiveHeaderRenderer", heads);
+        if (!heads.isEmpty()) out.banner = thumbnail(heads.get(0));
+        out.songs = channelSongs(app, page, out.channel);
+        return out;
+    }
+
+    private static String channelOfVideo(Context app, String videoId) {
         String body;
         try {
             body = new JSONObject()
-                    .put("browseId", channel)
+                    .put("videoId", videoId)
+                    .put("playlistId", "RDAMVM" + videoId)
+                    .put("isAudioOnly", true)
                     .put("context", YT_MUSIC.context())
                     .toString();
         } catch (Exception e) {
             return null;
         }
-        String json = DiskCache.loadPost(app, "yt", "chan:" + channel, BANNER_FRESH_MS,
-                BROWSE_URL, body, YT_MUSIC.ua);
+        String json = DiskCache.loadPost(app, "yt", "mix:" + videoId, MIX_FRESH_MS,
+                NEXT_URL, body, YT_MUSIC.ua);
         if (json == null) return null;
-        List<JSONObject> heads = new ArrayList<JSONObject>();
+        List<JSONObject> rows = new ArrayList<JSONObject>();
         try {
-            collect(new JSONObject(json), "musicImmersiveHeaderRenderer", heads);
+            collect(new JSONObject(json), "playlistPanelVideoRenderer", rows);
         } catch (Exception e) {
             return null;
         }
-        return heads.isEmpty() ? null : thumbnail(heads.get(0));
+        for (JSONObject row : rows) {
+            if (videoId.equals(row.optString("videoId"))) {
+                return channel(row.optJSONObject("longBylineText"));
+            }
+        }
+        return null;
+    }
+
+    private static List<Track> channelSongs(Context app, JSONObject page, String channel) {
+        List<JSONObject> shelves = new ArrayList<JSONObject>();
+        collect(page, "musicShelfRenderer", shelves);
+        if (shelves.isEmpty()) return new ArrayList<Track>();
+        JSONObject shelf = shelves.get(0);
+        JSONObject bottom = shelf.optJSONObject("bottomEndpoint");
+        JSONObject more = bottom == null ? null : bottom.optJSONObject("browseEndpoint");
+        String list = more == null ? "" : more.optString("browseId", "");
+        if (list.matches("VL[A-Za-z0-9_-]+")) {
+            JSONObject all = browse(app, list, more.optString("params", null),
+                    "songs:" + channel, RELEASE_FRESH_MS);
+            if (all != null) shelf = all;
+        }
+        List<JSONObject> rows = new ArrayList<JSONObject>();
+        collect(shelf, "musicResponsiveListItemRenderer", rows);
+        List<Track> out = new ArrayList<Track>(rows.size());
+        for (JSONObject row : rows) {
+            JSONObject data = row.optJSONObject("playlistItemData");
+            String id = data == null ? null : data.optString("videoId", "");
+            String title = column(row, 0);
+            if (!validId(id) || TextUtils.isEmpty(title)) continue;
+            Track t = new Track();
+            t.type = Track.TYPE_ONLINE;
+            t.sourceId = PREFIX + id;
+            t.title = title;
+            t.artist = column(row, 1);
+            t.artistChannel = channel(columnText(row, 1));
+            t.album = albumColumn(row);
+            t.durationMs = parseLength(fixedColumn(row));
+            t.artUrl = thumbnail(row);
+            out.add(t);
+        }
+        return LessAi.filter(app, out);
+    }
+
+    private static String albumColumn(JSONObject row) {
+        JSONArray cols = row.optJSONArray("flexColumns");
+        for (int i = 2; cols != null && i < cols.length(); i++) {
+            JSONObject node = columnText(row, i);
+            JSONArray runs = node == null ? null : node.optJSONArray("runs");
+            JSONObject run = runs == null ? null : runs.optJSONObject(0);
+            JSONObject nav = run == null ? null : run.optJSONObject("navigationEndpoint");
+            JSONObject to = nav == null ? null : nav.optJSONObject("browseEndpoint");
+            if (to != null && to.optString("browseId", "").startsWith("MPREb")) return text(node);
+        }
+        return null;
+    }
+
+    private static JSONObject browse(Context app, String browseId, String params, String cacheKey,
+                                     long freshMs) {
+        String body;
+        try {
+            JSONObject ask = new JSONObject()
+                    .put("browseId", browseId)
+                    .put("context", YT_MUSIC.context());
+            if (!TextUtils.isEmpty(params)) ask.put("params", params);
+            body = ask.toString();
+        } catch (Exception e) {
+            return null;
+        }
+        String json = DiskCache.loadPost(app, "yt", cacheKey, freshMs, BROWSE_URL, body,
+                YT_MUSIC.ua);
+        if (json == null) return null;
+        try {
+            return new JSONObject(json);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String artistChannel(Context app, String artist) {
@@ -718,7 +817,7 @@ public class YtApi {
         JSONObject nav = row.optJSONObject("navigationEndpoint");
         JSONObject browse = nav == null ? null : nav.optJSONObject("browseEndpoint");
         String id = browse == null ? null : browse.optString("browseId", "");
-        return id != null && id.startsWith("UC") ? id : null;
+        return validChannel(id) ? id : null;
     }
 
     // ---- mix ----
@@ -779,6 +878,7 @@ public class YtApi {
             t.title = title;
             // shortBylineText is the artist alone; the long one appends view and like counts.
             t.artist = text(row.optJSONObject("shortBylineText"));
+            t.artistChannel = channel(row.optJSONObject("longBylineText"));
             t.durationMs = parseLength(text(row.optJSONObject("lengthText")));
             t.artUrl = thumbnail(row);
             out.add(t);
@@ -787,11 +887,26 @@ public class YtApi {
     }
 
     private static String column(JSONObject row, int index) {
+        return text(columnText(row, index));
+    }
+
+    private static JSONObject columnText(JSONObject row, int index) {
         JSONArray cols = row.optJSONArray("flexColumns");
         JSONObject col = cols == null ? null : cols.optJSONObject(index);
         JSONObject r = col == null ? null
                 : col.optJSONObject("musicResponsiveListItemFlexColumnRenderer");
-        return r == null ? null : text(r.optJSONObject("text"));
+        return r == null ? null : r.optJSONObject("text");
+    }
+
+    private static String channel(JSONObject node) {
+        JSONArray runs = node == null ? null : node.optJSONArray("runs");
+        if (runs == null) return null;
+        for (int i = 0; i < runs.length(); i++) {
+            JSONObject run = runs.optJSONObject(i);
+            String id = run == null ? null : browseId(run);
+            if (id != null) return id;
+        }
+        return null;
     }
 
     private static String[] bullets(String line) {

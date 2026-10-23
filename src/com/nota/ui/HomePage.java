@@ -579,13 +579,17 @@ public class HomePage extends Page implements MediaLibrary.Listener, Playback.Li
         // A muted name starts out as one the row has already shown, which is how it never does.
         Set<String> seen = new HashSet<String>(Muted.keys(host));
         for (String name : Follows.all(host)) {
-            List<Track> known = db.onlineByArtist(name, 1);
+            List<Track> known = db.onlineByArtist(name, null, 1);
             if (!known.isEmpty() && seen.add(name.toLowerCase(Locale.ROOT))) {
                 faces.add(known.get(0));
             }
         }
+        Set<String> shown = new HashSet<String>();
         for (Track t : db.topArtists(SLIDER)) {
-            if (t.artist != null && seen.add(t.artist.toLowerCase(Locale.ROOT))) faces.add(t);
+            if (t.artist == null) continue;
+            String name = t.artist.toLowerCase(Locale.ROOT);
+            if (seen.contains(name)) continue;
+            if (shown.add(t.artistChannel != null ? t.artistChannel : name)) faces.add(t);
         }
         return faces;
     }

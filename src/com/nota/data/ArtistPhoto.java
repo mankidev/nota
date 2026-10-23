@@ -8,7 +8,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URLEncoder;
-import java.util.Locale;
 
 /**
  * A picture of an artist the catalogue keeps no banner for. MusicBrainz knows which person or
@@ -30,10 +29,10 @@ public class ArtistPhoto {
     /**
      * @param width how wide the picture is wanted; Commons resizes before sending it
      */
-    public static void lookup(Context c, final String artist, final int width,
-                              final Callback cb) {
+    public static void lookup(Context c, final String artist, final String channel,
+                              final int width, final Callback cb) {
         final Context app = c.getApplicationContext();
-        final String key = KEY + artist.toLowerCase(Locale.ROOT);
+        final String key = KEY + ArtistInfo.cacheKey(artist, channel);
         String cached = Prefs.getString(app, key, null);
         if (cached != null) {
             cb.onUrl(cached.length() == 0 ? null : filePath(cached, width));
@@ -44,7 +43,7 @@ public class ArtistPhoto {
             public void run() {
                 final String file;
                 try {
-                    file = fetch(artist);
+                    file = fetch(artist, channel);
                 } catch (Exception e) {
                     // Nothing is written down: an answer that never arrived is not "no picture".
                     return;
@@ -61,20 +60,17 @@ public class ArtistPhoto {
     }
 
     /** The name of the file on Commons, or empty where the trail ends. */
-    private static String fetch(String artist) throws Exception {
-        JSONObject found = ArtistInfo.search(artist);
-        String mbid = found == null ? null : found.optString("id", null);
-        if (mbid == null) return "";
-        String entity = wikidataId(mbid);
+    private static String fetch(String artist, String channel) throws Exception {
+        JSONObject found = ArtistInfo.record(artist, channel);
+        if (found == null) return "";
+        String entity = wikidataId(found);
         if (entity == null) return "";
         String file = image(entity);
         return file == null ? "" : file;
     }
 
-    static String wikidataId(String mbid) throws Exception {
-        String json = Net.get("https://musicbrainz.org/ws/2/artist/"
-                + URLEncoder.encode(mbid, "UTF-8") + "?fmt=json&inc=url-rels", TIMEOUT_MS);
-        JSONArray rels = new JSONObject(json).optJSONArray("relations");
+    static String wikidataId(JSONObject record) {
+        JSONArray rels = record.optJSONArray("relations");
         if (rels == null) return null;
         for (int i = 0; i < rels.length(); i++) {
             JSONObject rel = rels.optJSONObject(i);

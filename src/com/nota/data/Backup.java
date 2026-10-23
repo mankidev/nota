@@ -174,6 +174,7 @@ public class Backup {
                 o.put("art", t.artUrl);
                 o.put("track_no", t.trackNo);
                 o.put("year", t.year);
+                if (t.artistChannel != null) o.put("artist_channel", t.artistChannel);
                 if (YtApi.videoId(t) == null) o.put("url", t.data);
             } else {
                 o.put("path", t.data);
@@ -274,6 +275,8 @@ public class Backup {
         v.put("duration", o.optLong("duration"));
         v.put("track_no", o.optInt("track_no"));
         v.put("year", o.optInt("year"));
+        String channel = o.optString("artist_channel", null);
+        if (YtApi.validChannel(channel)) v.put("artist_channel", channel);
         v.put("added", System.currentTimeMillis());
         db.insertWithOnConflict("online_tracks", null, v, SQLiteDatabase.CONFLICT_IGNORE);
         return true;

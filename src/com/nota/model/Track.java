@@ -25,6 +25,7 @@ public class Track {
     public long dateAddedSec;
     /** Catalogue identifier for online tracks, e.g. {@code yt:<videoId>}. */
     public String sourceId;
+    public String artistChannel;
 
     /** Played over the network: artwork comes from a URL and there is no local .lrc file. */
     public boolean isRemote() {

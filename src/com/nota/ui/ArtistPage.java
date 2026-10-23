@@ -62,8 +62,8 @@ public class ArtistPage extends Page implements Playback.Listener {
     private Button follow;
     private ProgressBar progress;
     private boolean searched;
-    /** Empty while the catalogue is being asked, so the header is only asked once. */
-    private String banner;
+    private String channel;
+    private boolean lookedUp;
     /** The picture outranks the colour wash, which a later catalogue answer would else repaint. */
     private boolean bannerUp;
     /** What the page last painted the window with, kept so coming back to it is not bare. */
@@ -72,6 +72,7 @@ public class ArtistPage extends Page implements Playback.Listener {
     public ArtistPage(String name, Track face) {
         this.name = name;
         this.face = face;
+        this.channel = face == null ? null : face.artistChannel;
     }
 
     @Override
@@ -119,12 +120,10 @@ public class ArtistPage extends Page implements Playback.Listener {
         });
 
         Playback.get(host).addListener(this);
-        show(Db.get(host).onlineByArtist(name, LIMIT));
-        searchCatalogue();
+        show(Db.get(host).onlineByArtist(name, channel, LIMIT));
         bindListened();
-        loadInfo();
-        loadLinks();
-        loadBio();
+        if (channel != null) lookUp();
+        loadArtist();
         return root;
     }
 
@@ -137,7 +136,7 @@ public class ArtistPage extends Page implements Playback.Listener {
     /** What the listener has spent on this artist, which only they can have earned. */
     private void bindListened() {
         TextView line = (TextView) header.findViewById(R.id.listened);
-        long minutes = Db.get(host).listenedMs(name) / 60000;
+        long minutes = Db.get(host).listenedMs(name, channel) / 60000;
         if (minutes < 1) {
             line.setVisibility(View.GONE);
             return;
@@ -148,10 +147,18 @@ public class ArtistPage extends Page implements Playback.Listener {
         line.setVisibility(View.VISIBLE);
     }
 
+    private void lookUp() {
+        if (lookedUp) return;
+        lookedUp = true;
+        loadInfo();
+        loadLinks();
+        loadBio();
+    }
+
     /** The reading of a non-latin name, the name behind the alias, whichever exists. */
     private void loadInfo() {
         final TextView note = (TextView) header.findViewById(R.id.note);
-        ArtistInfo.lookup(host, name, new ArtistInfo.Callback() {
+        ArtistInfo.lookup(host, name, channel, new ArtistInfo.Callback() {
             public void onInfo(String line) {
                 if (adapter == null || line.length() == 0) return;
                 note.setText(line);
@@ -164,7 +171,7 @@ public class ArtistPage extends Page implements Playback.Listener {
     private void loadLinks() {
         final View box = header.findViewById(R.id.links_box);
         final LinearLayout row = (LinearLayout) header.findViewById(R.id.links);
-        ArtistLinks.lookup(host, name, new ArtistLinks.Callback() {
+        ArtistLinks.lookup(host, name, channel, new ArtistLinks.Callback() {
             public void onLinks(List<ArtistLinks.Link> links) {
                 if (adapter == null || links.isEmpty()) return;
                 row.removeAllViews();
@@ -187,7 +194,7 @@ public class ArtistPage extends Page implements Playback.Listener {
         };
         bio.setOnClickListener(open);
         more.setOnClickListener(open);
-        ArtistBio.lookup(host, name, new ArtistBio.Callback() {
+        ArtistBio.lookup(host, name, channel, new ArtistBio.Callback() {
             public void onBio(String text) {
                 if (adapter == null || text.length() == 0) return;
                 bio.setText(text);
@@ -277,19 +284,61 @@ public class ArtistPage extends Page implements Playback.Listener {
     }
 
     /** The catalogue is asked once per visit; coming back to the page must not cost data again. */
-    private void searchCatalogue() {
+    private void loadArtist() {
         if (searched) return;
         searched = true;
         progress.setVisibility(View.VISIBLE);
+        String videoId = face == null ? null : YtApi.videoId(face);
+        YtApi.artist(host, name, channel, videoId, new YtApi.ArtistCallback() {
+            public void onArtist(final YtApi.Artist found) {
+                if (adapter == null) return;
+                if (found.channel != null) channel = found.channel;
+                lookUp();
+                showBanner(found.banner);
+                if (channel == null || found.songs == null || found.songs.isEmpty()) {
+                    bindListened();
+                    searchCatalogue();
+                    return;
+                }
+                final String owner = channel;
+                Db.background(new Runnable() {
+                    public void run() {
+                        Db db = Db.get(host);
+                        db.claim(owner, found.songs);
+                        final List<Track> known = db.onlineByArtist(name, owner, LIMIT);
+                        host.runOnUiThread(new Runnable() {
+                            public void run() {
+                                if (adapter == null) return;
+                                progress.setVisibility(View.GONE);
+                                show(merge(known, found.songs));
+                                bindListened();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    private static List<Track> merge(List<Track> known, List<Track> found) {
+        List<Track> merged = new ArrayList<Track>(known);
+        Set<String> seen = new HashSet<String>();
+        for (Track t : merged) seen.add(t.key());
+        for (Track t : found) if (seen.add(t.key())) merged.add(t);
+        return merged;
+    }
+
+    private void searchCatalogue() {
         YtApi.search(host, name, new YtApi.TrackCallback() {
             public void onTracks(List<Track> found) {
                 if (adapter == null) return;
                 progress.setVisibility(View.GONE);
-                List<Track> merged = new ArrayList<Track>(adapter.items());
-                Set<String> seen = new HashSet<String>();
-                for (Track t : merged) seen.add(t.key());
-                for (Track t : found) if (seen.add(t.key())) merged.add(t);
-                show(merged);
+                List<Track> theirs = new ArrayList<Track>();
+                for (Track t : found) {
+                    if (channel == null || channel.equals(t.artistChannel)) theirs.add(t);
+                }
+                show(merge(channel == null ? adapter.items()
+                        : Db.get(host).onlineByArtist(name, channel, LIMIT), theirs));
             }
 
             public void onError() {
@@ -310,7 +359,6 @@ public class ArtistPage extends Page implements Playback.Listener {
         ((TextView) header.findViewById(R.id.title)).setText(name);
         Track cover = face != null ? face : items.isEmpty() ? null : items.get(0);
         loadTint(cover);
-        loadBanner();
     }
 
     /**
@@ -319,33 +367,25 @@ public class ArtistPage extends Page implements Playback.Listener {
      * travels; a name the catalogue gives no banner for is looked for on Wikidata instead, and
      * one that is nowhere simply keeps the wash.
      */
-    private void loadBanner() {
-        if (banner != null) return;
-        banner = "";
+    private void showBanner(String url) {
         // Under a scrim, half the screen's width is as sharp as it needs to be, and it is the
         // difference between a 130 KB picture and a 75 KB one.
         final int w = Math.min(host.getResources().getDisplayMetrics().widthPixels, 540);
         final int h = w * host.getResources().getDimensionPixelSize(R.dimen.wash_height)
                 / host.getResources().getDisplayMetrics().widthPixels;
-        YtApi.artistBanner(host, name, new YtApi.UrlCallback() {
-            public void onUrl(String url) {
-                if (adapter == null) return;
-                if (url == null) {
-                    ArtistPhoto.lookup(host, name, w, new ArtistPhoto.Callback() {
-                        public void onUrl(String photo) {
-                            showBanner(photo, w, h);
-                        }
-                    });
-                    return;
-                }
-                showBanner(url, w, h);
+        if (url != null) {
+            loadBanner(url, w, h);
+            return;
+        }
+        ArtistPhoto.lookup(host, name, channel, w, new ArtistPhoto.Callback() {
+            public void onUrl(String photo) {
+                loadBanner(photo, w, h);
             }
         });
     }
 
-    private void showBanner(String url, final int w, final int h) {
+    private void loadBanner(String url, final int w, final int h) {
         if (adapter == null || url == null) return;
-        banner = url;
         ArtLoader.get(host).loadWide(url, w, h, new ArtLoader.BitmapCallback() {
             public void onBitmap(Bitmap bmp) {
                 if (adapter == null || !visible()) return;
