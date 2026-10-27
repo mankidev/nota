@@ -1,0 +1,3 @@
+- Songs no longer skip one after another when Android clears the app's cache.
+- Song covers show again after the cache is cleared.
+- No more crash log files in Downloads.

@@ -306,17 +306,27 @@ public class ArtLoader {
             in = conn.getInputStream();
             Bitmap b = decodeScaled(in, size);
             DataSaver.get(app).addDownloaded(Math.max(conn.getContentLength(), 0));
-            if (b != null) {
-                FileOutputStream out = new FileOutputStream(f);
-                b.compress(Bitmap.CompressFormat.JPEG, 90, out);
-                out.close();
-            }
+            if (b != null) store(b, f);
             return b;
         } catch (Throwable ignored) {
             return null;
         } finally {
             close(in);
             if (conn != null) conn.disconnect();
+        }
+    }
+
+    private void store(Bitmap b, File f) {
+        if (!diskDir.isDirectory()) diskDir.mkdirs();
+        try {
+            FileOutputStream out = new FileOutputStream(f);
+            try {
+                b.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            } finally {
+                out.close();
+            }
+        } catch (Exception e) {
+            f.delete();
         }
     }
 

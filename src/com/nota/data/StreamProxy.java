@@ -146,7 +146,7 @@ public class StreamProxy {
         c.setRequestProperty("Accept-Encoding", "identity");
         c.setRequestProperty("User-Agent", YtStream.USER_AGENT);
         c.setRequestProperty("Range", "bytes=0-" + (HEAD_BYTES - 1));
-        File part = new File(dir, id + "." + System.nanoTime() + ".headpart");
+        File part = fresh(id + "." + System.nanoTime() + ".headpart");
         try {
             int code = c.getResponseCode();
             if (code != HttpURLConnection.HTTP_OK && code != HttpURLConnection.HTTP_PARTIAL) {
@@ -229,6 +229,11 @@ public class StreamProxy {
         File kept = Downloads.get(app).file(videoId);
         if (kept.isFile() && kept.length() > 0) return kept;
         return new File(dir(app), videoId + ".m4a");
+    }
+
+    private File fresh(String name) {
+        if (!dir.isDirectory()) dir.mkdirs();
+        return new File(dir, name);
     }
 
     private static File dir(Context app) {
@@ -478,7 +483,7 @@ public class StreamProxy {
                 return;
             }
 
-            if (fromTop) part = new File(dir, id + "." + System.nanoTime() + ".part");
+            if (fromTop) part = fresh(id + "." + System.nanoTime() + ".part");
             OutputStream copy = part == null ? null : new FileOutputStream(part);
             if (part != null) {
                 live = new Fetching(part, total);
@@ -629,7 +634,7 @@ public class StreamProxy {
                 + "Content-Length: " + total + "\r\n"
                 + "Connection: close\r\n\r\n").getBytes("UTF-8"));
 
-        File part = new File(dir, id + "." + System.nanoTime() + ".part");
+        File part = fresh(id + "." + System.nanoTime() + ".part");
         OutputStream copy = new FileOutputStream(part);
         Fetching live = new Fetching(part, total);
         synchronized (fetching) {

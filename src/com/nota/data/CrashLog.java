@@ -50,7 +50,7 @@ public class CrashLog {
         if (!f.exists() || f.length() == 0) return null;
         String body = read(f);
         if (body == null) return null;
-        if (Build.VERSION.SDK_INT >= 29) {
+        if (Diag.LOGS && Build.VERSION.SDK_INT >= 29) {
             ContentValues v = new ContentValues();
             v.put(MediaStore.Downloads.DISPLAY_NAME,
                     "nota-crash-" + System.currentTimeMillis() + ".txt");
@@ -71,6 +71,7 @@ public class CrashLog {
     }
 
     public static void note(Context context, String text) {
+        if (!Diag.LOGS) return;
         try {
             String line = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date())
                     + " " + withoutAddresses(text) + "\n";

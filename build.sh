@@ -75,6 +75,11 @@ aapt2 optimize -o "$OUT/base.opt.apk" \
   "$OUT/base.apk"
 mv "$OUT/base.opt.apk" "$OUT/base.apk"
 
+mkdir -p "$OUT/gen/com/nota/data"
+if [ "${NOTA_LOGS:-0}" = 1 ]; then LOGS=true; else LOGS=false; fi
+printf 'package com.nota.data;\n\nfinal class Diag {\n    static final boolean LOGS = %s;\n}\n' "$LOGS" \
+  > "$OUT/gen/com/nota/data/Diag.java"
+
 echo ">> javac"
 find "$ROOT/src" "$OUT/gen" -name '*.java' > "$OUT/sources.txt"
 "$JAVA_HOME/bin/javac" -parameters -source 8 -target 8 -encoding UTF-8 \
