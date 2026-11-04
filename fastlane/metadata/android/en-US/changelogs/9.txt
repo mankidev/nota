@@ -1,0 +1,6 @@
+- New signing key: uninstall the old version first. Export your listening data before, then import it again.
+- The queue fills itself again when it runs out.
+- The same songs no longer come back in a loop.
+- Less AI catches many more AI music channels.
+- Search puts the original song above covers.
+- No crash reports are saved.

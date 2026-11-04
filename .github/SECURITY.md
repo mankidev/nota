@@ -12,7 +12,13 @@ Once a fix is released, the report is published with credit to you unless you as
 
 ## Checking a download
 
-Every release lists the SHA-256 of its APK and of the signing certificate. Releases from 1.1 on are signed with the same key:
+Every release lists the SHA-256 of its APK and of the signing certificate. Releases from 1.3.5 on are signed with this key:
+
+```
+7bc157aad15211edbd11148d20fef968a910d40dea6dd3c100e8965828eb355f
+```
+
+Releases 1.1 to 1.3.4 were signed with an older key:
 
 ```
 70e682be49371a962ddaa7b694c84035cd2ccd341734d9bf46ee14a230f89e58

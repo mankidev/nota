@@ -22,7 +22,7 @@ Music player for Android. It plays the songs on your phone and can fetch the one
 - **Light on data.** What it fetches once is kept, so screens open again without the network.
 - **So tiny.** The APK is under 300 KB.
 
-Your listening history stays on the phone. Searches, covers and lyrics are fetched from YouTube, MusicBrainz, Wikidata and LRCLIB, which see what you searched for and your IP address.
+Your listening history stays on the phone. Searches, covers and lyrics are fetched from YouTube, MusicBrainz, Wikidata and LRCLIB, which see what you searched for and your IP address. With **Less AI** on, Nota also downloads the [Ammit](https://github.com/CappyT/ammit) list of AI music channels from GitHub once a week.
 
 ## Build
 
