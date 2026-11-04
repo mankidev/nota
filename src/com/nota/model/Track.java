@@ -21,6 +21,7 @@ public class Track {
     public long dateAddedSec;
     public String sourceId;
     public String artistChannel;
+    public long plays;
 
     public boolean isRemote() {
         return type != TYPE_LOCAL;

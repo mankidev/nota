@@ -18,6 +18,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class YtApi {
     public static final String PREFIX = "yt:";
@@ -66,6 +68,10 @@ public class YtApi {
     private static final Client YT_MUSIC = new Client("WEB_REMIX", "1.20240403.01.00",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     + "Chrome/123.0 Safari/537.36", "tr", "TR");
+
+    private static final Client YT_MUSIC_EN = new Client("WEB_REMIX", "1.20240403.01.00",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                    + "Chrome/123.0 Safari/537.36", "en", "US");
 
     private static final Client YT_WATCH = new Client("WEB", "2.20240403.01.00",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -186,6 +192,7 @@ public class YtApi {
         if (meta.length >= 2) t.durationMs = parseLength(meta[meta.length - 1]);
         if (meta.length >= 3) t.album = meta[meta.length - 2];
         t.artUrl = thumbnail(row);
+        t.plays = plays(column(row, 1) + " " + column(row, 2));
         return t;
     }
 
@@ -591,6 +598,99 @@ public class YtApi {
         return out;
     }
 
+    public static class Footprint {
+        public String description = "";
+        public long subscribers;
+        public int releases;
+        public final List<Integer> years = new ArrayList<Integer>();
+        public boolean live;
+    }
+
+    private static final Pattern YEAR = Pattern.compile("\\b(19|20)\\d{2}\\b");
+    private static final Pattern COUNT = Pattern.compile("([\\d.]+)\\s*([KMB])?");
+
+    public static Footprint footprintBlocking(Context app, String channel) {
+        if (!validChannel(channel)) return null;
+        JSONObject page = browseEn(channel, null);
+        if (page == null) return null;
+        List<JSONObject> heads = new ArrayList<JSONObject>();
+        collect(page.optJSONObject("header"), "musicImmersiveHeaderRenderer", heads);
+        collect(page.optJSONObject("header"), "musicVisualHeaderRenderer", heads);
+        if (heads.isEmpty()) return null;
+        JSONObject head = heads.get(0);
+        Footprint f = new Footprint();
+        String about = text(head.optJSONObject("description"));
+        if (about != null) f.description = about;
+        JSONObject button = head.optJSONObject("subscriptionButton");
+        JSONObject subscribe = button == null ? null : button.optJSONObject("subscribeButtonRenderer");
+        f.subscribers = subscribe == null ? 0
+                : count(text(subscribe.optJSONObject("subscriberCountText")));
+        List<JSONObject> shelves = new ArrayList<JSONObject>();
+        collect(page.optJSONObject("contents"), "musicCarouselShelfRenderer", shelves);
+        for (JSONObject shelf : shelves) {
+            JSONObject top = shelf.optJSONObject("header");
+            JSONObject hdr = top == null ? null : top.optJSONObject("musicCarouselShelfBasicHeaderRenderer");
+            if (hdr == null) continue;
+            String title = text(hdr.optJSONObject("title"));
+            if ("Live performances".equals(title)) f.live = true;
+            if (!"Albums".equals(title) && !"Singles".equals(title) && !"Singles & EPs".equals(title)) {
+                continue;
+            }
+            List<JSONObject> items = new ArrayList<JSONObject>();
+            collect(shelf.optJSONArray("contents"), "musicTwoRowItemRenderer", items);
+            JSONObject more = moreEndpoint(hdr);
+            if (more != null) {
+                JSONObject grid = browseEn(more.optString("browseId"), more.optString("params"));
+                List<JSONObject> all = new ArrayList<JSONObject>();
+                if (grid != null) collect(grid.optJSONObject("contents"), "musicTwoRowItemRenderer", all);
+                if (all.size() > items.size()) items = all;
+            }
+            f.releases += items.size();
+            for (JSONObject item : items) {
+                String sub = text(item.optJSONObject("subtitle"));
+                Matcher m = sub == null ? null : YEAR.matcher(sub);
+                if (m != null && m.find()) f.years.add(Integer.parseInt(m.group()));
+            }
+        }
+        return f;
+    }
+
+    private static JSONObject moreEndpoint(JSONObject hdr) {
+        JSONObject more = hdr.optJSONObject("moreContentButton");
+        JSONObject button = more == null ? null : more.optJSONObject("buttonRenderer");
+        JSONObject nav = button == null ? null : button.optJSONObject("navigationEndpoint");
+        JSONObject browse = nav == null ? null : nav.optJSONObject("browseEndpoint");
+        return browse == null || TextUtils.isEmpty(browse.optString("browseId")) ? null : browse;
+    }
+
+    private static JSONObject browseEn(String browseId, String params) {
+        try {
+            JSONObject ask = new JSONObject()
+                    .put("browseId", browseId)
+                    .put("context", YT_MUSIC_EN.context());
+            if (!TextUtils.isEmpty(params)) ask.put("params", params);
+            return new JSONObject(Net.post(BROWSE_URL, ask.toString(), YT_MUSIC_EN.ua, 15000));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static long count(String said) {
+        if (said == null) return 0;
+        Matcher m = COUNT.matcher(said.replace(",", ""));
+        if (!m.find()) return 0;
+        try {
+            double n = Double.parseDouble(m.group(1));
+            String unit = m.group(2);
+            if ("K".equals(unit)) n *= 1e3;
+            else if ("M".equals(unit)) n *= 1e6;
+            else if ("B".equals(unit)) n *= 1e9;
+            return (long) n;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private static String channelOfVideo(Context app, String videoId) {
         List<JSONObject> rows = mixRows(app, videoId);
         if (rows == null) return null;
@@ -836,6 +936,24 @@ public class YtApi {
         if (list == null || list.length() == 0) return null;
         JSONObject best = list.optJSONObject(list.length() - 1);
         return best == null ? null : best.optString("url", null);
+    }
+
+    private static final Pattern PLAYS = Pattern.compile(
+            "([0-9][0-9.,]*)[\\s\\u00a0]*(B|Mn|Mr)?[\\s\\u00a0]+(?:dinlenme|g\u00f6r\u00fcnt\u00fcleme)");
+
+    static long plays(String line) {
+        Matcher m = PLAYS.matcher(line);
+        if (!m.find()) return 0;
+        String unit = m.group(2);
+        String n = m.group(1);
+        try {
+            if (unit == null) return Long.parseLong(n.replaceAll("[.,]", ""));
+            double v = Double.parseDouble(n.replace(".", "").replace(',', '.'));
+            double scale = "B".equals(unit) ? 1e3 : "Mn".equals(unit) ? 1e6 : 1e9;
+            return (long) (v * scale);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static long parseLength(String s) {

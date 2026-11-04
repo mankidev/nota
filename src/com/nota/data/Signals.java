@@ -68,7 +68,8 @@ public class Signals {
             public void run() {
                 Db db = Db.get(app);
                 db.recordEvent(heardKey, eventKind, eventScore);
-                if (pairedWith != null) {
+                if (pairedWith != null
+                        && (eventScore <= 0 || !Recommender.suggested(app, heardKey))) {
                     db.bumpTransition(pairedWith, heardKey, eventScore > 0 ? 1 : -1);
                 }
             }

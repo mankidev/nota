@@ -25,7 +25,7 @@ public class CrashLog {
     private static boolean installed;
 
     public static synchronized void install(Context context) {
-        if (installed) return;
+        if (installed || !Diag.LOGS) return;
         installed = true;
         final Context app = context.getApplicationContext();
         final Thread.UncaughtExceptionHandler previous =

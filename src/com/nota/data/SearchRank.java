@@ -23,6 +23,9 @@ public class SearchRank {
     private static final long LONG_MS = 15L * 60 * 1000;
     private static final float VARIANT_PENALTY = 0.3f;
     private static final float LONG_PENALTY = 0.3f;
+    private static final float ARTIST_BONUS = 0.5f;
+    private static final float ARTIST_ONLY_BONUS = 0.2f;
+    private static final float POPULAR_BONUS = 0.4f;
 
     private static class Ranked {
         final Track track;
@@ -84,7 +87,21 @@ public class SearchRank {
             }
         }
         if (t.durationMs > LONG_MS && !wantsLong(wanted)) score -= LONG_PENALTY;
+        List<String> name = leadArtist(t.artist);
+        if (!name.isEmpty() && wanted.containsAll(name)) {
+            boolean titleHit = false;
+            for (String w : wanted) if (!name.contains(w) && titled.contains(w)) titleHit = true;
+            score += titleHit ? ARTIST_BONUS : ARTIST_ONLY_BONUS;
+        }
+        if (t.plays > 0) {
+            float pop = (float) ((Math.log10(t.plays) - 4) / 5);
+            score += POPULAR_BONUS * Math.max(0f, Math.min(1f, pop));
+        }
         return score;
+    }
+
+    private static List<String> leadArtist(String artist) {
+        return tokens(artist == null ? null : artist.split(",|&| feat| ft\\.| ve | and ")[0]);
     }
 
     private static boolean wantsLong(Set<String> wanted) {

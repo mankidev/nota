@@ -52,6 +52,8 @@ public class Playback implements MediaPlayer.OnCompletionListener,
     private static final int AUTOPLAY_BATCH = 16;
 
     private static final int MIN_AHEAD = 12;
+    private static final int EXTEND_TRIES = 3;
+    private static final long EXTEND_RETRY_MS = 10000;
     private static final long SLOW_START_MS = 5000;
     private static final long SAVE_EVERY_MS = 10000;
 
@@ -89,6 +91,13 @@ public class Playback implements MediaPlayer.OnCompletionListener,
     private long heardSince;
     private String extendedFrom;
     private boolean extending;
+    private boolean advanceWhenExtended;
+    private int extendTries;
+    private final Runnable retryExtend = new Runnable() {
+        public void run() {
+            maybeExtend();
+        }
+    };
     private boolean loadingMore;
 
     public static final int MORE_BATCH = 12;
@@ -251,7 +260,7 @@ public class Playback implements MediaPlayer.OnCompletionListener,
 
     public void play(List<Track> tracks, int index) {
         if (tracks == null || tracks.isEmpty()) return;
-        extendedFrom = null;
+        resetExtend();
         queue.clear();
         queue.addAll(tracks);
         buildOrder(Math.max(0, Math.min(index, queue.size() - 1)));
@@ -266,7 +275,7 @@ public class Playback implements MediaPlayer.OnCompletionListener,
     public void shuffleAll(List<Track> tracks) {
         if (tracks == null || tracks.isEmpty()) return;
         shuffle = true;
-        extendedFrom = null;
+        resetExtend();
         queue.clear();
         queue.addAll(tracks);
         buildOrder((int) (Math.random() * queue.size()));
@@ -417,7 +426,7 @@ public class Playback implements MediaPlayer.OnCompletionListener,
 
     public void stop() {
         closeOut(null);
-        extendedFrom = null;
+        resetExtend();
         playWhenReady = false;
         setPlaying(false);
         prepared = false;
@@ -636,13 +645,23 @@ public class Playback implements MediaPlayer.OnCompletionListener,
                 }
             });
         }
+        extendTries = 0;
+        advanceWhenExtended = false;
         maybeExtend();
         Prefetch.get(app).around(peekNext(), peekPrevious(), upcoming(4));
         fireTrack();
         fireState();
     }
 
+    private void resetExtend() {
+        extendedFrom = null;
+        advanceWhenExtended = false;
+        extendTries = 0;
+        main.removeCallbacks(retryExtend);
+    }
+
     private void maybeExtend() {
+        main.removeCallbacks(retryExtend);
         if (repeat != REPEAT_OFF || extending) return;
         if (orderPos < 0 || order.size() - 1 - orderPos >= MIN_AHEAD) return;
         if (!Prefs.getBool(app, KEY_AUTOPLAY, true)) return;
@@ -654,8 +673,30 @@ public class Playback implements MediaPlayer.OnCompletionListener,
             public void onTracks(List<Track> tracks) {
                 extending = false;
                 Track now = current();
-                if (tracks.isEmpty() || now == null || !seed.key().equals(now.key())) return;
+                if (now != null && !seed.key().equals(now.key())) {
+                    if (seed.key().equals(extendedFrom)) extendedFrom = null;
+                    advanceWhenExtended = false;
+                    maybeExtend();
+                    return;
+                }
+                if (now == null) return;
+                if (tracks.isEmpty()) {
+                    if (seed.key().equals(extendedFrom)) extendedFrom = null;
+                    if (++extendTries < EXTEND_TRIES) {
+                        main.postDelayed(retryExtend, EXTEND_RETRY_MS);
+                    } else {
+                        advanceWhenExtended = false;
+                    }
+                    return;
+                }
+                extendTries = 0;
                 addToQueue(tracks);
+                if (advanceWhenExtended && !playing && orderPos + 1 < order.size()) {
+                    advanceWhenExtended = false;
+                    orderPos++;
+                    openCurrent(true);
+                    return;
+                }
                 Prefetch.get(app).around(peekNext(), peekPrevious(), upcoming(4));
             }
         });
@@ -684,6 +725,12 @@ public class Playback implements MediaPlayer.OnCompletionListener,
             playWhenReady = false;
             unregisterNoisy();
             fireState();
+            if (Prefs.getBool(app, KEY_AUTOPLAY, true)) {
+                extendedFrom = null;
+                extendTries = 0;
+                advanceWhenExtended = true;
+                maybeExtend();
+            }
         }
     }
 
